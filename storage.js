@@ -1,6 +1,6 @@
-import { generateId, nowISO } from "./utils.js";
+import { generateId, nowISO, normalizeText } from "./utils.js";
 
-const STORAGE_KEY = "word_trpg_data_v1";
+const STORAGE_KEY = "word_trpg_data_v2";
 
 function createEmptyData() {
   return {
@@ -77,10 +77,6 @@ export function addBook(title) {
 export function deleteBook(bookId) {
   const data = getData();
 
-  const relatedSectionIds = data.sections
-    .filter((section) => section.bookId === bookId)
-    .map((section) => section.id);
-
   const relatedWordIds = data.words
     .filter((word) => word.bookId === bookId)
     .map((word) => word.id);
@@ -128,6 +124,17 @@ export function deleteSection(sectionId) {
   saveData(data);
 }
 
+export function isDuplicateWordInSection(sectionId, wordText, excludeWordId = null) {
+  const data = getData();
+  const target = normalizeText(wordText);
+
+  return data.words.some((word) => {
+    if (word.sectionId !== sectionId) return false;
+    if (excludeWordId && word.id === excludeWordId) return false;
+    return normalizeText(word.word) === target;
+  });
+}
+
 export function addWord(wordData) {
   const data = getData();
 
@@ -150,6 +157,28 @@ export function addWord(wordData) {
   return word;
 }
 
+export function updateWord(wordId, patch) {
+  const data = getData();
+  const target = data.words.find((word) => word.id === wordId);
+  if (!target) return null;
+
+  target.word = patch.word?.trim() ?? target.word;
+  target.meaning = patch.meaning?.trim() ?? target.meaning;
+  target.pos = patch.pos ?? target.pos;
+  target.tone = patch.tone ?? target.tone;
+  target.tags = Array.isArray(patch.tags) ? patch.tags : target.tags;
+  target.example = patch.example?.trim() ?? target.example;
+  target.memo = patch.memo?.trim() ?? target.memo;
+
+  saveData(data);
+  return target;
+}
+
+export function getWordById(wordId) {
+  const data = getData();
+  return data.words.find((word) => word.id === wordId) || null;
+}
+
 export function deleteWord(wordId) {
   const data = getData();
   data.words = data.words.filter((word) => word.id !== wordId);
@@ -169,4 +198,53 @@ export function addStudyRecord(recordData) {
   data.studyRecords.push(record);
   saveData(data);
   return record;
+}
+
+export function getWrongWordIdsBySection(sectionId) {
+  const data = getData();
+  const wordIdsInSection = new Set(
+    data.words.filter((word) => word.sectionId === sectionId).map((word) => word.id)
+  );
+
+  const wrongIds = data.studyRecords
+    .filter((record) => !record.correct && wordIdsInSection.has(record.wordId))
+    .map((record) => record.wordId);
+
+  return [...new Set(wrongIds)];
+}
+
+export function getStudyStatsBySection(sectionId) {
+  const data = getData();
+  const wordIdsInSection = new Set(
+    data.words.filter((word) => word.sectionId === sectionId).map((word) => word.id)
+  );
+
+  const records = data.studyRecords.filter((record) => wordIdsInSection.has(record.wordId));
+  const total = records.length;
+  const correct = records.filter((record) => record.correct).length;
+  const wrong = total - correct;
+  const accuracy = total ? Math.round((correct / total) * 100) : 0;
+
+  return { total, correct, wrong, accuracy };
+}
+
+export function getWrongNoteEntriesBySection(sectionId) {
+  const data = getData();
+  const words = data.words.filter((word) => word.sectionId === sectionId);
+
+  return words
+    .map((word) => {
+      const records = data.studyRecords.filter((record) => record.wordId === word.id);
+      const wrongCount = records.filter((record) => !record.correct).length;
+      const correctCount = records.filter((record) => record.correct).length;
+
+      return {
+        ...word,
+        wrongCount,
+        correctCount,
+        totalCount: records.length
+      };
+    })
+    .filter((entry) => entry.wrongCount > 0)
+    .sort((a, b) => b.wrongCount - a.wrongCount);
 }
