@@ -14,6 +14,7 @@ import { normalizeText, escapeHtml, shuffleArray } from "./utils.js";
 
 const studyBookSelect = document.getElementById("studyBookSelect");
 const studySectionSelect = document.getElementById("studySectionSelect");
+const studyDirectionSelect = document.getElementById("studyDirectionSelect");
 
 const startStudyBtn = document.getElementById("startStudyBtn");
 const retryWrongBtn = document.getElementById("retryWrongBtn");
@@ -51,6 +52,7 @@ let currentWord = null;
 let pendingSubmission = null;
 let autoNextTimer = null;
 let lastMode = "all";
+let quizDirection = "word-to-meaning";
 
 function renderBookOptions() {
   const data = getData();
@@ -174,7 +176,7 @@ function renderCurrentWord() {
   const favoriteText = currentWord.favorite ? "⭐ 즐겨찾기" : "☆ 일반";
 
   studyCard.innerHTML = `
-    <div class="study-word">${escapeHtml(currentWord.word)}</div>
+    <div class="study-word">${escapeHtml(getPromptText(currentWord))}</div>
     <div class="study-sub">품사: ${getPosLabel(currentWord.pos)}</div>
     <div class="study-sub">정서값: ${getToneLabel(currentWord.tone)}</div>
     <div class="study-sub">태그: ${escapeHtml(tagText || "없음")}</div>
@@ -218,6 +220,7 @@ function judgeAnswer(userAnswer, meanings) {
 }
 
 function startStudy(mode = "all", payload = null) {
+  quizDirection = studyDirectionSelect?.value || "word-to-meaning";
   loadStudyQueue(mode, payload);
   if (!currentWord) {
     studyCard.innerHTML = `<p class="muted">선택한 조건에 맞는 단어가 없습니다.</p>`;
@@ -342,7 +345,10 @@ function showMeanings(meanings) {
 function beginJudgement(userAnswer) {
   if (!currentWord) return;
 
-  const autoJudgedCorrect = judgeAnswer(userAnswer, currentWord.meanings);
+  const autoJudgedCorrect =
+  quizDirection === "meaning-to-word"
+    ? judgeWordAnswer(userAnswer, currentWord.word)
+    : judgeAnswer(userAnswer, currentWord.meanings);
   pendingSubmission = {
     wordId: currentWord.id,
     userAnswer,
@@ -354,7 +360,8 @@ function beginJudgement(userAnswer) {
     judgeHintText.textContent = "자동 판정은 정답 후보입니다. 그대로 확정하거나 뒤집을 수 있습니다.";
   } else {
     resultBox.innerHTML = `<span class="result-wrong">자동 판정: 오답 후보 ❌</span>`;
-    judgeHintText.textContent = `자동 판정은 오답 후보입니다. 정답 보기: ${showMeanings(currentWord.meanings)}`;
+    judgeHintText.textContent = `자동 판정은 오답 후보입니다.
+정답 보기: ${getCorrectAnswerText(currentWord)}`;
   }
 
   judgeConfirmBox.classList.remove("hidden");
@@ -370,12 +377,22 @@ function finalizeJudgement(finalCorrect) {
     finalCorrect
   });
 
+  const correctAnswerText = getCorrectAnswerText(currentWord);
+
   if (finalCorrect) {
-    resultBox.innerHTML = `<span class="result-correct">최종 판정: 정답 ✅</span>`;
-    logMessage(`${currentWord.word}: 정답`);
+    resultBox.innerHTML = `최종 판정: 정답 ✅`;
+    logMessage(
+      quizDirection === "meaning-to-word"
+        ? `${showMeanings(currentWord.meanings)}: 정답 → ${currentWord.word}`
+        : `${currentWord.word}: 정답`
+    );
   } else {
-    resultBox.innerHTML = `<span class="result-wrong">최종 판정: 오답 ❌ · 정답: ${escapeHtml(showMeanings(currentWord.meanings))}</span>`;
-    logMessage(`${currentWord.word}: 오답 → ${showMeanings(currentWord.meanings)}`);
+    resultBox.innerHTML = `최종 판정: 오답 ❌ · 정답: ${escapeHtml(correctAnswerText)}`;
+    logMessage(
+      quizDirection === "meaning-to-word"
+        ? `${showMeanings(currentWord.meanings)}: 오답 → ${currentWord.word}`
+        : `${currentWord.word}: 오답 → ${showMeanings(currentWord.meanings)}`
+    );
   }
 
   renderStats();
@@ -432,7 +449,7 @@ async function main() {
 
   showAnswerBtn.addEventListener("click", () => {
     if (!currentWord) return;
-    resultBox.innerHTML = `정답: <strong>${escapeHtml(showMeanings(currentWord.meanings))}</strong>`;
+    resultBox.innerHTML = `정답: <strong>${escapeHtml(getCorrectAnswerText(currentWord))}`;
   });
 
   nextQuestionBtn.addEventListener("click", () => {
