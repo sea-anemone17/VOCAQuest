@@ -1,5 +1,5 @@
 import { initData, getData } from "./storage.js";
-import { scenarios } from "./scenarios.js";
+import { scenarios } from "./scenarios/index.js";
 import { getPosLabel, getToneLabel, getTagLabel } from "./tags.js";
 import { normalizeText, escapeHtml } from "./utils.js";
 
