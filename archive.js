@@ -11,7 +11,9 @@ import {
   deleteWord,
   isDuplicateWordInSection,
   parseMeanings,
-  consumeArchiveEditTarget
+  consumeArchiveEditTarget,
+  getStorageSummary,
+  toggleFavorite
 } from "./storage.js";
 import {
   POS_OPTIONS,
@@ -22,6 +24,7 @@ import {
   getTagLabel
 } from "./tags.js";
 import { escapeHtml } from "./utils.js";
+import { exportBackup, importBackupFile } from "./backup.js";
 
 let selectedBookId = null;
 let selectedSectionId = null;
@@ -45,6 +48,7 @@ const wordSearchInput = document.getElementById("wordSearchInput");
 const wordFilterPos = document.getElementById("wordFilterPos");
 const wordFilterTone = document.getElementById("wordFilterTone");
 const wordFilterTag = document.getElementById("wordFilterTag");
+const wordFilterFavorite = document.getElementById("wordFilterFavorite");
 
 const editingWordIdInput = document.getElementById("editingWordId");
 const wordSubmitBtn = document.getElementById("wordSubmitBtn");
@@ -52,8 +56,14 @@ const cancelEditBtn = document.getElementById("cancelEditBtn");
 
 const wordInput = document.getElementById("wordInput");
 const meaningsInput = document.getElementById("meaningsInput");
+const favoriteInput = document.getElementById("favoriteInput");
 const exampleInput = document.getElementById("exampleInput");
 const memoInput = document.getElementById("memoInput");
+
+const storageSummaryBox = document.getElementById("storageSummaryBox");
+const exportBackupBtn = document.getElementById("exportBackupBtn");
+const importBackupInput = document.getElementById("importBackupInput");
+const importBackupBtn = document.getElementById("importBackupBtn");
 
 function fillSelect(selectElement, options, includeAll = false) {
   const defaultOption = includeAll ? `<option value="">전체</option>` : "";
@@ -108,6 +118,7 @@ function resetWordForm() {
   fillSelect(posSelect, POS_OPTIONS);
   fillSelect(toneSelect, TONE_OPTIONS);
   renderTagCheckboxes(posSelect.value);
+  favoriteInput.checked = false;
   wordSubmitBtn.textContent = "단어 추가";
   wordForm.classList.remove("editing-highlight");
 }
@@ -119,11 +130,31 @@ function setEditMode(word) {
   posSelect.value = word.pos;
   toneSelect.value = word.tone;
   renderTagCheckboxes(word.pos, word.tags || []);
+  favoriteInput.checked = Boolean(word.favorite);
   exampleInput.value = word.example || "";
   memoInput.value = word.memo || "";
   wordSubmitBtn.textContent = "단어 수정";
   wordForm.classList.add("editing-highlight");
   wordInput.focus();
+}
+
+function renderStorageSummary() {
+  const summary = getStorageSummary();
+  const lastUpdatedText = summary.lastUpdatedAt
+    ? new Date(summary.lastUpdatedAt).toLocaleString("ko-KR")
+    : "없음";
+
+  storageSummaryBox.innerHTML = `
+    <div class="storage-grid">
+      <div class="storage-item"><span>스키마</span><strong>v${summary.schemaVersion}</strong></div>
+      <div class="storage-item"><span>책</span><strong>${summary.bookCount}</strong></div>
+      <div class="storage-item"><span>섹션</span><strong>${summary.sectionCount}</strong></div>
+      <div class="storage-item"><span>단어</span><strong>${summary.wordCount}</strong></div>
+      <div class="storage-item"><span>기록</span><strong>${summary.recordCount}</strong></div>
+      <div class="storage-item"><span>즐겨찾기</span><strong>${summary.favoriteCount}</strong></div>
+    </div>
+    <div class="muted small-note">마지막 저장: ${lastUpdatedText}</div>
+  `;
 }
 
 function renderBooks() {
@@ -203,6 +234,7 @@ function getFilteredWords(words) {
   const posValue = wordFilterPos.value;
   const toneValue = wordFilterTone.value;
   const tagValue = wordFilterTag.value;
+  const favoriteValue = wordFilterFavorite.value;
 
   return words.filter((word) => {
     const meaningsText = (word.meanings || []).join(" ").toLowerCase();
@@ -217,8 +249,10 @@ function getFilteredWords(words) {
     const matchesPos = !posValue || word.pos === posValue;
     const matchesTone = !toneValue || word.tone === toneValue;
     const matchesTag = !tagValue || (word.tags || []).includes(tagValue);
+    const matchesFavorite =
+      !favoriteValue || (favoriteValue === "favorite" ? Boolean(word.favorite) : true);
 
-    return matchesSearch && matchesPos && matchesTone && matchesTag;
+    return matchesSearch && matchesPos && matchesTone && matchesTag && matchesFavorite;
   });
 }
 
@@ -252,9 +286,17 @@ function renderWords() {
         .map((meaning) => `<li>${escapeHtml(meaning)}</li>`)
         .join("");
 
+      const favoriteIcon = word.favorite ? "⭐" : "☆";
+      const favoriteLabel = word.favorite ? "즐겨찾기 해제" : "즐겨찾기";
+
       return `
         <div class="list-item">
-          <strong>${escapeHtml(word.word)}</strong>
+          <div class="favorite-head">
+            <strong>${escapeHtml(word.word)}</strong>
+            <button class="favorite-btn ${word.favorite ? "favorite-on" : ""}" data-action="toggle-favorite" data-id="${word.id}" title="${favoriteLabel}">
+              ${favoriteIcon}
+            </button>
+          </div>
           <ul class="meaning-list">${meaningsHtml}</ul>
           <div class="word-meta">품사: ${getPosLabel(word.pos)} · 정서: ${getToneLabel(word.tone)}</div>
           <div>${tagHtml}</div>
@@ -271,6 +313,7 @@ function renderWords() {
 }
 
 function renderAll() {
+  renderStorageSummary();
   renderBooks();
   renderSections();
   renderWords();
@@ -288,6 +331,7 @@ function handleWordSubmit() {
   const pos = posSelect.value;
   const tone = toneSelect.value;
   const tags = getSelectedTags();
+  const favorite = favoriteInput.checked;
   const example = exampleInput.value;
   const memo = memoInput.value;
 
@@ -315,6 +359,7 @@ function handleWordSubmit() {
     pos,
     tone,
     tags,
+    favorite,
     example,
     memo
   };
@@ -350,6 +395,7 @@ function attachEvents() {
 
   wordFilterTone.addEventListener("change", renderWords);
   wordFilterTag.addEventListener("change", renderWords);
+  wordFilterFavorite.addEventListener("change", renderWords);
   wordSearchInput.addEventListener("input", renderWords);
 
   cancelEditBtn.addEventListener("click", () => {
@@ -358,6 +404,30 @@ function attachEvents() {
   });
 
   wordInput.addEventListener("keydown", focusMeaningsWhenEnter);
+
+  exportBackupBtn.addEventListener("click", () => {
+    exportBackup();
+  });
+
+  importBackupBtn.addEventListener("click", async () => {
+    const file = importBackupInput.files?.[0];
+    if (!file) {
+      alert("불러올 JSON 파일을 선택하세요.");
+      return;
+    }
+
+    const ok = confirm("현재 데이터를 백업 파일로 덮어쓸 수 있습니다. 계속할까요?");
+    if (!ok) return;
+
+    try {
+      await importBackupFile(file);
+      alert("백업을 불러왔습니다.");
+      location.reload();
+    } catch (error) {
+      console.error(error);
+      alert("백업 불러오기에 실패했습니다. 파일 형식을 확인해 주세요.");
+    }
+  });
 
   bookForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -467,6 +537,11 @@ function attachEvents() {
       deleteWord(id);
       renderAll();
     }
+
+    if (action === "toggle-favorite") {
+      toggleFavorite(id);
+      renderAll();
+    }
   });
 }
 
@@ -509,4 +584,5 @@ async function main() {
   tryOpenEditTarget();
 }
 
+main();
 main();
