@@ -1,4 +1,4 @@
-export const scenarios = [
+export const closedCorridorScenarios = [
   {
     id: "closed_corridor_loop",
     title: "닫힌 복도에서",
@@ -259,14 +259,6 @@ export const scenarios = [
           }
         ],
 
-        effects: {
-          success: { clue: 2, routeBias: "decode" },
-          failure: { mistake: 1, routeBias: "decode" }
-        }
-      }
-    ]
-  }
-];
         effects: {
           success: { clue: 2, routeBias: "decode" },
           failure: { mistake: 1, routeBias: "decode" }
