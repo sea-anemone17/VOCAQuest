@@ -1,10 +1,20 @@
 import { generateId, nowISO, normalizeText } from "./utils.js";
 
-const STORAGE_KEY = "word_trpg_data_v3";
+const STORAGE_KEY = "word_trpg_data";
+const CURRENT_SCHEMA_VERSION = 4;
+
+const LEGACY_KEYS = [
+  "word_trpg_data_v3",
+  "word_trpg_data_v2",
+  "word_trpg_data_v1"
+];
+
 const ARCHIVE_EDIT_TARGET_KEY = "word_trpg_archive_edit_target";
 
 function createEmptyData() {
   return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    lastUpdatedAt: nowISO(),
     books: [],
     sections: [],
     words: [],
@@ -32,6 +42,10 @@ function migrateWord(word) {
     } else {
       next.tags = [];
     }
+  }
+
+  if (typeof next.favorite !== "boolean") {
+    next.favorite = false;
   }
 
   delete next.meaning;
@@ -63,6 +77,8 @@ function migrateRecord(record) {
 
 function migrateData(rawData) {
   return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    lastUpdatedAt: rawData.lastUpdatedAt || nowISO(),
     books: (rawData.books || []).map((book) => ({ ...book })),
     sections: (rawData.sections || []).map((section) => ({ ...section })),
     words: (rawData.words || []).map(migrateWord),
@@ -72,6 +88,7 @@ function migrateData(rawData) {
 
 export function getData() {
   const raw = localStorage.getItem(STORAGE_KEY);
+
   if (!raw) {
     return createEmptyData();
   }
@@ -86,19 +103,47 @@ export function getData() {
 }
 
 export function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  const safeData = migrateData(data);
+  safeData.lastUpdatedAt = nowISO();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(safeData));
+}
+
+export function replaceData(newData) {
+  const migrated = migrateData(newData);
+  saveData(migrated);
+  return migrated;
+}
+
+function tryMigrateLegacyKeys() {
+  for (const key of LEGACY_KEYS) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw);
+      const migrated = migrateData(parsed);
+      saveData(migrated);
+      return migrated;
+    } catch (error) {
+      console.warn(`레거시 키 마이그레이션 실패: ${key}`, error);
+    }
+  }
+
+  return null;
 }
 
 export async function initData() {
-  const existing = getData();
-  if (
-    existing.books.length ||
-    existing.sections.length ||
-    existing.words.length ||
-    existing.studyRecords.length
-  ) {
+  const existingRaw = localStorage.getItem(STORAGE_KEY);
+
+  if (existingRaw) {
+    const existing = getData();
     saveData(existing);
     return existing;
+  }
+
+  const migratedLegacy = tryMigrateLegacyKeys();
+  if (migratedLegacy) {
+    return migratedLegacy;
   }
 
   try {
@@ -106,6 +151,7 @@ export async function initData() {
     if (!response.ok) {
       throw new Error("기본 데이터 로드 실패");
     }
+
     const defaultData = await response.json();
     const migrated = migrateData(defaultData);
     saveData(migrated);
@@ -191,12 +237,14 @@ export function isDuplicateWordInSection(sectionId, wordText, excludeWordId = nu
 }
 
 export function parseMeanings(inputText) {
-  return [...new Set(
-    inputText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-  )];
+  return [
+    ...new Set(
+      inputText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+    )
+  ];
 }
 
 export function addWord(wordData) {
@@ -211,6 +259,7 @@ export function addWord(wordData) {
     pos: wordData.pos,
     tone: wordData.tone,
     tags: Array.isArray(wordData.tags) ? wordData.tags : [],
+    favorite: Boolean(wordData.favorite),
     example: wordData.example?.trim() || "",
     memo: wordData.memo?.trim() || "",
     createdAt: nowISO()
@@ -231,11 +280,23 @@ export function updateWord(wordId, patch) {
   target.pos = patch.pos ?? target.pos;
   target.tone = patch.tone ?? target.tone;
   target.tags = Array.isArray(patch.tags) ? patch.tags : target.tags;
+  target.favorite =
+    typeof patch.favorite === "boolean" ? patch.favorite : target.favorite;
   target.example = patch.example?.trim() ?? target.example;
   target.memo = patch.memo?.trim() ?? target.memo;
 
   saveData(data);
   return target;
+}
+
+export function toggleFavorite(wordId) {
+  const data = getData();
+  const target = data.words.find((word) => word.id === wordId);
+  if (!target) return null;
+
+  target.favorite = !target.favorite;
+  saveData(data);
+  return target.favorite;
 }
 
 export function getWordById(wordId) {
@@ -375,4 +436,17 @@ export function consumeArchiveEditTarget() {
   const target = sessionStorage.getItem(ARCHIVE_EDIT_TARGET_KEY);
   sessionStorage.removeItem(ARCHIVE_EDIT_TARGET_KEY);
   return target;
+}
+
+export function getStorageSummary() {
+  const data = getData();
+  return {
+    schemaVersion: data.schemaVersion || CURRENT_SCHEMA_VERSION,
+    lastUpdatedAt: data.lastUpdatedAt || null,
+    bookCount: data.books.length,
+    sectionCount: data.sections.length,
+    wordCount: data.words.length,
+    recordCount: data.studyRecords.length,
+    favoriteCount: data.words.filter((word) => word.favorite).length
+  };
 }
