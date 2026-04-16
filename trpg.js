@@ -48,18 +48,28 @@ function resetGameState() {
   gameState = {
     scenarioId: null,
     sectionId: null,
-    sceneIndex: 0,
+    turnCount: 0,
     clueCount: 0,
     mistakeCount: 0,
     journal: [],
+    usedWordIds: [],
+    currentActionType: null,
     currentWord: null,
-    currentSceneResolved: false
+    currentChoicePool: [],
+    resolvedThisTurn: false,
+    ended: false
   };
   pendingSubmission = null;
 }
 
+function getCurrentScenario() {
+  if (!gameState?.scenarioId) return null;
+  return scenarios.find((scenario) => scenario.id === gameState.scenarioId) || null;
+}
+
 function renderBookOptions() {
   const data = getData();
+
   if (!data.books.length) {
     trpgBookSelect.innerHTML = `<option value="">책 없음</option>`;
     trpgSectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
@@ -95,73 +105,68 @@ function renderScenarioOptions() {
     .join("");
 }
 
-function getCurrentScenario() {
-  if (!gameState?.scenarioId) return null;
-  return scenarios.find((scenario) => scenario.id === gameState.scenarioId) || null;
-}
-
-function getCurrentScene() {
-  const scenario = getCurrentScenario();
-  if (!scenario) return null;
-  return scenario.scenes[gameState.sceneIndex] || null;
-}
-
 function getWordsInSection(sectionId) {
   const data = getData();
   return data.words.filter((word) => word.sectionId === sectionId);
 }
 
-function pickWordForScene(scene, sectionId) {
-  const words = getWordsInSection(sectionId);
+function pickRandom(array) {
+  if (!array.length) return null;
+  return array[Math.floor(Math.random() * array.length)];
+}
 
+function pickUnusedPreferredWord(actionType, sectionId) {
+  const words = getWordsInSection(sectionId);
   if (!words.length) return null;
 
-  const matched = words.filter((word) => {
+  const unusedWords = words.filter((word) => !gameState.usedWordIds.includes(word.id));
+  const candidateBase = unusedWords.length ? unusedWords : words;
+
+  const matched = candidateBase.filter((word) => {
     const posOk =
-      !scene.preferredPos?.length || scene.preferredPos.includes(word.pos);
+      !actionType.preferredPos?.length || actionType.preferredPos.includes(word.pos);
 
     const tagOk =
-      !scene.preferredTags?.length ||
-      (word.tags || []).some((tag) => scene.preferredTags.includes(tag));
+      !actionType.preferredTags?.length ||
+      (word.tags || []).some((tag) => actionType.preferredTags.includes(tag));
 
     return posOk && tagOk;
   });
 
-  if (matched.length > 0) {
-    return matched[Math.floor(Math.random() * matched.length)];
-  }
-
-  return words[Math.floor(Math.random() * words.length)];
+  return pickRandom(matched.length ? matched : candidateBase);
 }
 
-function renderState() {
+function updateStateBox() {
   const scenario = getCurrentScenario();
-  const totalScenes = scenario?.scenes.length || 0;
-  const currentSceneNumber =
-    totalScenes === 0 ? 0 : Math.min(gameState.sceneIndex + 1, totalScenes);
+  const maxTurns = scenario?.loopConfig?.maxTurns || 0;
+  sceneCounter.textContent = `${gameState.turnCount} / ${maxTurns}`;
+  clueCountEl.textContent = String(gameState.clueCount);
+  mistakeCountEl.textContent = String(gameState.mistakeCount);
 
-  sceneCounter.textContent = `${currentSceneNumber} / ${totalScenes}`;
-  clueCountEl.textContent = gameState.clueCount;
-  mistakeCountEl.textContent = gameState.mistakeCount;
-  scenarioStatus.textContent = gameState.currentSceneResolved ? "선택 대기" : "조사 중";
-}
-
-function renderJournal() {
-  if (!gameState.journal.length) {
-    journalBox.innerHTML = `<div class="empty-state">아직 기록이 없습니다.</div>`;
+  if (gameState.ended) {
+    scenarioStatus.textContent = "종결";
     return;
   }
 
-  journalBox.innerHTML = gameState.journal
-    .map((entry) => `<div class="log-entry">${escapeHtml(entry)}</div>`)
-    .join("");
+  if (gameState.currentActionType && !gameState.resolvedThisTurn) {
+    scenarioStatus.textContent = "해석 중";
+    return;
+  }
+
+  if (gameState.currentActionType && gameState.resolvedThisTurn) {
+    scenarioStatus.textContent = "선택 대기";
+    return;
+  }
+
+  scenarioStatus.textContent = "행동 선택";
 }
 
 function renderIntro() {
   const scenario = getCurrentScenario();
+
   if (!scenario) {
-    scenarioIntroBox.innerHTML = `<p class="muted">시나리오를 시작해 주세요.</p>`;
     scenarioTitle.textContent = "시나리오";
+    scenarioIntroBox.innerHTML = `<p class="muted">시나리오를 시작해 주세요.</p>`;
     return;
   }
 
@@ -169,22 +174,42 @@ function renderIntro() {
   scenarioIntroBox.innerHTML = `<p>${escapeHtml(scenario.intro)}</p>`;
 }
 
-function renderScene() {
-  const scene = getCurrentScene();
+function renderSceneChoiceMenu() {
+  const scenario = getCurrentScenario();
 
-  if (!scene) {
-    sceneBox.innerHTML = `<p class="muted">장면이 없습니다.</p>`;
+  if (!scenario || gameState.ended) {
+    sceneBox.innerHTML = `<p class="muted">시나리오를 시작해 주세요.</p>`;
     return;
   }
 
+  if (gameState.currentActionType) {
+    const actionType = gameState.currentActionType;
+    sceneBox.innerHTML = `
+      <h3>${escapeHtml(actionType.label)}</h3>
+      <p>${escapeHtml(actionType.description)}</p>
+    `;
+    return;
+  }
+
+  const buttonsHtml = scenario.actionTypes
+    .map(
+      (action) => `
+        <button class="button" data-action-type="${action.id}">
+          ${escapeHtml(action.label)}
+        </button>
+      `
+    )
+    .join("");
+
   sceneBox.innerHTML = `
-    <h3>${escapeHtml(scene.title)}</h3>
-    <p>${escapeHtml(scene.description)}</p>
+    <h3>조사 행동을 선택하세요</h3>
+    <p class="muted">현재 상황에서 어떤 방식으로 조사할지 고르세요.</p>
+    <div class="button-row">${buttonsHtml}</div>
   `;
 }
 
 function renderWordEvent() {
-  if (!gameState.currentWord) {
+  if (!gameState.currentWord || !gameState.currentActionType || gameState.ended) {
     wordEventBox.classList.add("hidden");
     return;
   }
@@ -200,20 +225,18 @@ function renderWordEvent() {
   trpgResultBox.innerHTML = "";
   trpgJudgeConfirmBox.classList.add("hidden");
   wordEventBox.classList.remove("hidden");
-  trpgAnswerInput.focus();
 }
 
-function renderChoices() {
-  const scene = getCurrentScene();
-
-  if (!scene || !gameState.currentSceneResolved) {
+function renderChoicePool() {
+  if (!gameState.currentActionType || !gameState.resolvedThisTurn || gameState.ended) {
     sceneChoiceBox.classList.add("hidden");
     choiceButtons.innerHTML = "";
     return;
   }
 
   sceneChoiceBox.classList.remove("hidden");
-  choiceButtons.innerHTML = scene.choices
+
+  const buttonsHtml = (gameState.currentChoicePool || [])
     .map(
       (choice) => `
         <button class="button" data-choice-id="${choice.id}">
@@ -222,31 +245,35 @@ function renderChoices() {
       `
     )
     .join("");
+
+  choiceButtons.innerHTML = buttonsHtml;
+}
+
+function renderJournal() {
+  if (!gameState.journal.length) {
+    journalBox.innerHTML = `<div class="empty-state">아직 기록이 없습니다.</div>`;
+    return;
+  }
+
+  journalBox.innerHTML = gameState.journal
+    .map((entry) => `<div class="log-entry">${escapeHtml(entry)}</div>`)
+    .join("");
 }
 
 function renderEnding() {
-  endingBox.classList.add("hidden");
-  endingText.innerHTML = "";
-}
+  if (!gameState.ended) {
+    endingBox.classList.add("hidden");
+    endingText.innerHTML = "";
+    return;
+  }
 
-function renderAll() {
-  renderState();
-  renderIntro();
-  renderScene();
-  renderWordEvent();
-  renderChoices();
-  renderJournal();
-}
-
-function showEnding() {
   const scenario = getCurrentScenario();
   endingBox.classList.remove("hidden");
 
   let endingSummary = scenario.endingTexts.low;
-
-  if (gameState.clueCount >= 3 && gameState.mistakeCount <= 1) {
+  if (gameState.clueCount >= scenario.loopConfig.clueGoal && gameState.mistakeCount <= 1) {
     endingSummary = scenario.endingTexts.high;
-  } else if (gameState.clueCount >= 2) {
+  } else if (gameState.clueCount >= Math.ceil(scenario.loopConfig.clueGoal / 2)) {
     endingSummary = scenario.endingTexts.mid;
   }
 
@@ -255,11 +282,18 @@ function showEnding() {
     <hr />
     <p><strong>단서 수:</strong> ${gameState.clueCount}</p>
     <p><strong>오해 수:</strong> ${gameState.mistakeCount}</p>
+    <p><strong>진행한 턴:</strong> ${gameState.turnCount}</p>
   `;
+}
 
-  wordEventBox.classList.add("hidden");
-  sceneChoiceBox.classList.add("hidden");
-  scenarioStatus.textContent = "종결";
+function renderAll() {
+  updateStateBox();
+  renderIntro();
+  renderSceneChoiceMenu();
+  renderWordEvent();
+  renderChoicePool();
+  renderJournal();
+  renderEnding();
 }
 
 function judgeAnswer(userAnswer, meanings) {
@@ -278,12 +312,10 @@ function judgeAnswer(userAnswer, meanings) {
   );
 }
 
-function beginWordInterpretation(userAnswer) {
-  const scene = getCurrentScene();
-  const word = gameState.currentWord;
-  if (!scene || !word) return;
+function beginInterpretation(userAnswer) {
+  if (!gameState.currentWord || !gameState.currentActionType || gameState.resolvedThisTurn) return;
 
-  const autoJudgedCorrect = judgeAnswer(userAnswer, word.meanings);
+  const autoJudgedCorrect = judgeAnswer(userAnswer, gameState.currentWord.meanings);
 
   pendingSubmission = {
     userAnswer,
@@ -292,53 +324,108 @@ function beginWordInterpretation(userAnswer) {
 
   if (autoJudgedCorrect) {
     trpgResultBox.innerHTML = `<span class="result-correct">자동 판정: 정답 후보 ✅</span>`;
-    trpgJudgeHintText.textContent = "자동 판정은 정답 후보입니다. 그대로 확정하거나 뒤집을 수 있습니다.";
+    trpgJudgeHintText.textContent =
+      "자동 판정은 정답 후보입니다. 그대로 확정하거나 뒤집을 수 있습니다.";
   } else {
     trpgResultBox.innerHTML = `<span class="result-wrong">자동 판정: 오답 후보 ❌</span>`;
-    trpgJudgeHintText.textContent = `자동 판정은 오답 후보입니다. 정답 보기: ${(word.meanings || []).join(" / ")}`;
+    trpgJudgeHintText.textContent =
+      `자동 판정은 오답 후보입니다. 정답 보기: ${(gameState.currentWord.meanings || []).join(" / ")}`;
   }
 
   trpgJudgeConfirmBox.classList.remove("hidden");
 }
 
-function finalizeWordInterpretation(finalCorrect) {
-  const scene = getCurrentScene();
-  const word = gameState.currentWord;
-  if (!scene || !word || !pendingSubmission) return;
+function getRandomJournalText(pool) {
+  return pickRandom(pool) || "";
+}
+
+function finalizeInterpretation(finalCorrect) {
+  if (!pendingSubmission || !gameState.currentWord || !gameState.currentActionType) return;
+
+  const actionType = gameState.currentActionType;
 
   if (finalCorrect) {
     gameState.clueCount += 1;
-    gameState.journal.push(scene.successText);
     trpgResultBox.innerHTML = `<span class="result-correct">해석 성공 ✅</span>`;
+    gameState.journal.push(actionType.successText);
+    const extra = getRandomJournalText(actionType.successJournalPool || []);
+    if (extra) gameState.journal.push(extra);
   } else {
     gameState.mistakeCount += 1;
-    gameState.journal.push(scene.failureText);
     trpgResultBox.innerHTML = `<span class="result-wrong">해석 실패 ❌</span>`;
+    gameState.journal.push(actionType.failureText);
+    const extra = getRandomJournalText(actionType.failureJournalPool || []);
+    if (extra) gameState.journal.push(extra);
   }
 
-  gameState.currentSceneResolved = true;
-  trpgJudgeConfirmBox.classList.add("hidden");
-  pendingSubmission = null;
+  if (!gameState.usedWordIds.includes(gameState.currentWord.id)) {
+    gameState.usedWordIds.push(gameState.currentWord.id);
+  }
 
+  gameState.currentChoicePool = [...(actionType.choicePool || [])];
+  gameState.resolvedThisTurn = true;
+  pendingSubmission = null;
+  trpgJudgeConfirmBox.classList.add("hidden");
+
+  checkEndingCondition();
   renderAll();
 }
 
-function moveToNextScene() {
+function startTurnWithAction(actionTypeId) {
   const scenario = getCurrentScenario();
-  gameState.sceneIndex += 1;
+  const actionType = scenario?.actionTypes.find((item) => item.id === actionTypeId);
 
-  if (!scenario || gameState.sceneIndex >= scenario.scenes.length) {
-    showEnding();
-    renderJournal();
-    renderState();
-    return;
+  if (!actionType || gameState.ended) return;
+
+  gameState.turnCount += 1;
+  gameState.currentActionType = actionType;
+  gameState.currentWord = pickUnusedPreferredWord(actionType, gameState.sectionId);
+  gameState.currentChoicePool = [];
+  gameState.resolvedThisTurn = false;
+  pendingSubmission = null;
+
+  if (!gameState.currentWord) {
+    gameState.ended = true;
   }
 
-  const nextScene = getCurrentScene();
-  gameState.currentWord = pickWordForScene(nextScene, gameState.sectionId);
-  gameState.currentSceneResolved = false;
-
+  checkEndingCondition();
   renderAll();
+}
+
+function finishTurnWithChoice(choiceId) {
+  if (!gameState.currentActionType || !gameState.resolvedThisTurn || gameState.ended) return;
+
+  const choice = (gameState.currentChoicePool || []).find((item) => item.id === choiceId);
+  if (choice?.journalText) {
+    gameState.journal.push(choice.journalText);
+  }
+
+  gameState.currentActionType = null;
+  gameState.currentWord = null;
+  gameState.currentChoicePool = [];
+  gameState.resolvedThisTurn = false;
+
+  checkEndingCondition();
+  renderAll();
+}
+
+function checkEndingCondition() {
+  const scenario = getCurrentScenario();
+  if (!scenario) return;
+
+  const { maxTurns, clueGoal, mistakeLimit } = scenario.loopConfig;
+
+  const reachedTurnLimit = gameState.turnCount >= maxTurns && !gameState.currentActionType;
+  const reachedClueGoal = gameState.clueCount >= clueGoal;
+  const reachedMistakeLimit = gameState.mistakeCount >= mistakeLimit;
+
+  if (reachedTurnLimit || reachedClueGoal || reachedMistakeLimit) {
+    gameState.ended = true;
+    gameState.currentActionType = null;
+    gameState.currentWord = null;
+    gameState.currentChoicePool = [];
+    gameState.resolvedThisTurn = false;
+  }
 }
 
 function startScenario() {
@@ -353,25 +440,8 @@ function startScenario() {
   resetGameState();
   gameState.scenarioId = scenarioId;
   gameState.sectionId = sectionId;
-  gameState.sceneIndex = 0;
 
-  const firstScene = getCurrentScene();
-  gameState.currentWord = pickWordForScene(firstScene, sectionId);
-  gameState.currentSceneResolved = false;
-
-  endingBox.classList.add("hidden");
   renderAll();
-}
-
-function handleChoice(choiceId) {
-  const scene = getCurrentScene();
-  if (!scene || !gameState.currentSceneResolved) return;
-
-  const choice = scene.choices.find((item) => item.id === choiceId);
-  if (!choice) return;
-
-  gameState.journal.push(choice.journalText);
-  moveToNextScene();
 }
 
 function attachEvents() {
@@ -387,12 +457,22 @@ function attachEvents() {
     startScenario();
   });
 
+  sceneBox.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+
+    const actionTypeId = button.dataset.actionType;
+    if (actionTypeId) {
+      startTurnWithAction(actionTypeId);
+    }
+  });
+
   trpgAnswerForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (!gameState.currentWord || pendingSubmission || gameState.currentSceneResolved) return;
+    if (!gameState.currentWord || pendingSubmission || gameState.resolvedThisTurn || gameState.ended) return;
 
     const userAnswer = trpgAnswerInput.value.trim();
-    beginWordInterpretation(userAnswer);
+    beginInterpretation(userAnswer);
   });
 
   trpgShowAnswerBtn.addEventListener("click", () => {
@@ -401,18 +481,21 @@ function attachEvents() {
   });
 
   trpgConfirmCorrectBtn.addEventListener("click", () => {
-    finalizeWordInterpretation(true);
+    finalizeInterpretation(true);
   });
 
   trpgConfirmWrongBtn.addEventListener("click", () => {
-    finalizeWordInterpretation(false);
+    finalizeInterpretation(false);
   });
 
   choiceButtons.addEventListener("click", (event) => {
     const button = event.target.closest("button");
     if (!button) return;
+
     const choiceId = button.dataset.choiceId;
-    handleChoice(choiceId);
+    if (choiceId) {
+      finishTurnWithChoice(choiceId);
+    }
   });
 }
 
