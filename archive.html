@@ -59,7 +59,37 @@
           <p id="selectedSectionInfo" class="muted">섹션을 선택하세요.</p>
         </div>
 
+        <div class="filter-bar">
+          <label class="input-group">
+            <span>검색</span>
+            <input type="text" id="wordSearchInput" placeholder="단어 / 뜻 / 예문 검색" />
+          </label>
+
+          <label class="input-group">
+            <span>품사 필터</span>
+            <select id="wordFilterPos">
+              <option value="">전체</option>
+            </select>
+          </label>
+
+          <label class="input-group">
+            <span>정서값 필터</span>
+            <select id="wordFilterTone">
+              <option value="">전체</option>
+            </select>
+          </label>
+
+          <label class="input-group">
+            <span>태그 필터</span>
+            <select id="wordFilterTag">
+              <option value="">전체</option>
+            </select>
+          </label>
+        </div>
+
         <form id="wordForm" class="form-block word-form">
+          <input type="hidden" id="editingWordId" value="" />
+
           <label class="input-group">
             <span>단어</span>
             <input type="text" id="wordInput" placeholder="예: abandon" required />
@@ -95,7 +125,10 @@
             <textarea id="memoInput" rows="3" placeholder="추가 메모"></textarea>
           </label>
 
-          <button class="button primary" type="submit">단어 추가</button>
+          <div class="button-row">
+            <button class="button primary" id="wordSubmitBtn" type="submit">단어 추가</button>
+            <button class="button" id="cancelEditBtn" type="button">수정 취소</button>
+          </div>
         </form>
 
         <div id="wordList" class="list-box"></div>
