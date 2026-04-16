@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word TRPG - Study</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>🎲 학습 플레이</h1>
+        <p class="subtitle">랜덤 출제로 단어를 회상합니다.</p>
+      </div>
+      <div class="button-row">
+        <a class="button" href="./index.html">홈</a>
+        <a class="button" href="./archive.html">아카이브</a>
+      </div>
+    </header>
+
+    <main class="study-layout">
+      <section class="card">
+        <h2>학습 설정</h2>
+
+        <div class="form-block">
+          <label class="input-group">
+            <span>책 선택</span>
+            <select id="studyBookSelect"></select>
+          </label>
+
+          <label class="input-group">
+            <span>섹션 선택</span>
+            <select id="studySectionSelect"></select>
+          </label>
+
+          <div class="button-row">
+            <button id="startStudyBtn" class="button primary" type="button">학습 시작</button>
+            <button id="shuffleStudyBtn" class="button" type="button">다시 섞기</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>문제</h2>
+        <div id="studyCard" class="study-card">
+          <p class="muted">학습을 시작해 주세요.</p>
+        </div>
+
+        <form id="answerForm" class="form-block">
+          <label class="input-group">
+            <span>뜻 입력</span>
+            <input type="text" id="answerInput" placeholder="뜻을 입력하세요" />
+          </label>
+
+          <div class="button-row">
+            <button class="button primary" type="submit">제출</button>
+            <button id="showAnswerBtn" class="button" type="button">정답 보기</button>
+            <button id="nextQuestionBtn" class="button" type="button">다음 문제</button>
+          </div>
+        </form>
+
+        <div id="resultBox" class="result-box"></div>
+      </section>
+
+      <section class="card">
+        <h2>학습 로그</h2>
+        <div id="studyLog" class="log-box"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./study.js"></script>
+</body>
+</html>
