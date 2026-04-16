@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word TRPG</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <h1>📚 Word TRPG</h1>
+      <p class="subtitle">단어 태그 아카이브 + 학습 플레이</p>
+    </header>
+
+    <main class="home-grid">
+      <section class="card">
+        <h2>시작하기</h2>
+        <p>단어장을 만들고, 태그를 달고, 바로 학습할 수 있는 정적 사이트입니다.</p>
+        <div class="button-row">
+          <a class="button primary" href="./archive.html">아카이브 관리</a>
+          <a class="button" href="./study.html">학습 시작</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>현재 통계</h2>
+        <div id="statsBox" class="stats-box">
+          <div class="stat-item">
+            <span class="stat-label">책 수</span>
+            <strong id="bookCount">0</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">섹션 수</span>
+            <strong id="sectionCount">0</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">단어 수</span>
+            <strong id="wordCount">0</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">학습 기록</span>
+            <strong id="recordCount">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>사용 안내</h2>
+        <ol class="guide-list">
+          <li>아카이브에서 책과 섹션을 만든다.</li>
+          <li>단어를 입력하고 품사/정서값/태그를 설정한다.</li>
+          <li>학습 페이지에서 책/섹션을 골라 복습한다.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
