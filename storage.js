@@ -1,6 +1,7 @@
 import { generateId, nowISO, normalizeText } from "./utils.js";
 
-const STORAGE_KEY = "word_trpg_data_v2";
+const STORAGE_KEY = "word_trpg_data_v3";
+const ARCHIVE_EDIT_TARGET_KEY = "word_trpg_archive_edit_target";
 
 function createEmptyData() {
   return {
@@ -8,6 +9,64 @@ function createEmptyData() {
     sections: [],
     words: [],
     studyRecords: []
+  };
+}
+
+function migrateWord(word) {
+  const next = { ...word };
+
+  if (!Array.isArray(next.meanings)) {
+    if (typeof next.meaning === "string") {
+      next.meanings = next.meaning
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+    } else {
+      next.meanings = [];
+    }
+  }
+
+  if (!Array.isArray(next.tags)) {
+    if (typeof next.tags === "string" && next.tags.trim()) {
+      next.tags = [next.tags.trim()];
+    } else {
+      next.tags = [];
+    }
+  }
+
+  delete next.meaning;
+  return next;
+}
+
+function migrateRecord(record) {
+  const next = { ...record };
+
+  if (typeof next.autoJudgedCorrect !== "boolean") {
+    if (typeof next.correct === "boolean") {
+      next.autoJudgedCorrect = next.correct;
+    } else {
+      next.autoJudgedCorrect = false;
+    }
+  }
+
+  if (typeof next.finalCorrect !== "boolean") {
+    if (typeof next.correct === "boolean") {
+      next.finalCorrect = next.correct;
+    } else {
+      next.finalCorrect = false;
+    }
+  }
+
+  delete next.correct;
+  return next;
+}
+
+function migrateData(rawData) {
+  return {
+    books: (rawData.books || []).map((book) => ({ ...book })),
+    sections: (rawData.sections || []).map((section) => ({ ...section })),
+    words: (rawData.words || []).map(migrateWord),
+    studyRecords: (rawData.studyRecords || []).map(migrateRecord)
   };
 }
 
@@ -19,12 +78,7 @@ export function getData() {
 
   try {
     const parsed = JSON.parse(raw);
-    return {
-      books: parsed.books || [],
-      sections: parsed.sections || [],
-      words: parsed.words || [],
-      studyRecords: parsed.studyRecords || []
-    };
+    return migrateData(parsed);
   } catch (error) {
     console.error("데이터 파싱 실패:", error);
     return createEmptyData();
@@ -43,6 +97,7 @@ export async function initData() {
     existing.words.length ||
     existing.studyRecords.length
   ) {
+    saveData(existing);
     return existing;
   }
 
@@ -52,8 +107,9 @@ export async function initData() {
       throw new Error("기본 데이터 로드 실패");
     }
     const defaultData = await response.json();
-    saveData(defaultData);
-    return defaultData;
+    const migrated = migrateData(defaultData);
+    saveData(migrated);
+    return migrated;
   } catch (error) {
     console.warn("기본 데이터 없이 빈 데이터로 시작합니다.", error);
     const empty = createEmptyData();
@@ -76,7 +132,6 @@ export function addBook(title) {
 
 export function deleteBook(bookId) {
   const data = getData();
-
   const relatedWordIds = data.words
     .filter((word) => word.bookId === bookId)
     .map((word) => word.id);
@@ -135,6 +190,15 @@ export function isDuplicateWordInSection(sectionId, wordText, excludeWordId = nu
   });
 }
 
+export function parseMeanings(inputText) {
+  return [...new Set(
+    inputText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+  )];
+}
+
 export function addWord(wordData) {
   const data = getData();
 
@@ -143,7 +207,7 @@ export function addWord(wordData) {
     bookId: wordData.bookId,
     sectionId: wordData.sectionId,
     word: wordData.word.trim(),
-    meaning: wordData.meaning.trim(),
+    meanings: Array.isArray(wordData.meanings) ? wordData.meanings : [],
     pos: wordData.pos,
     tone: wordData.tone,
     tags: Array.isArray(wordData.tags) ? wordData.tags : [],
@@ -163,7 +227,7 @@ export function updateWord(wordId, patch) {
   if (!target) return null;
 
   target.word = patch.word?.trim() ?? target.word;
-  target.meaning = patch.meaning?.trim() ?? target.meaning;
+  target.meanings = Array.isArray(patch.meanings) ? patch.meanings : target.meanings;
   target.pos = patch.pos ?? target.pos;
   target.tone = patch.tone ?? target.tone;
   target.tags = Array.isArray(patch.tags) ? patch.tags : target.tags;
@@ -191,8 +255,9 @@ export function addStudyRecord(recordData) {
   const record = {
     id: generateId("record"),
     wordId: recordData.wordId,
-    correct: Boolean(recordData.correct),
     userAnswer: recordData.userAnswer || "",
+    autoJudgedCorrect: Boolean(recordData.autoJudgedCorrect),
+    finalCorrect: Boolean(recordData.finalCorrect),
     studiedAt: nowISO()
   };
   data.studyRecords.push(record);
@@ -207,7 +272,7 @@ export function getWrongWordIdsBySection(sectionId) {
   );
 
   const wrongIds = data.studyRecords
-    .filter((record) => !record.correct && wordIdsInSection.has(record.wordId))
+    .filter((record) => !record.finalCorrect && wordIdsInSection.has(record.wordId))
     .map((record) => record.wordId);
 
   return [...new Set(wrongIds)];
@@ -221,7 +286,7 @@ export function getStudyStatsBySection(sectionId) {
 
   const records = data.studyRecords.filter((record) => wordIdsInSection.has(record.wordId));
   const total = records.length;
-  const correct = records.filter((record) => record.correct).length;
+  const correct = records.filter((record) => record.finalCorrect).length;
   const wrong = total - correct;
   const accuracy = total ? Math.round((correct / total) * 100) : 0;
 
@@ -235,8 +300,8 @@ export function getWrongNoteEntriesBySection(sectionId) {
   return words
     .map((word) => {
       const records = data.studyRecords.filter((record) => record.wordId === word.id);
-      const wrongCount = records.filter((record) => !record.correct).length;
-      const correctCount = records.filter((record) => record.correct).length;
+      const wrongCount = records.filter((record) => !record.finalCorrect).length;
+      const correctCount = records.filter((record) => record.finalCorrect).length;
 
       return {
         ...word,
@@ -247,4 +312,67 @@ export function getWrongNoteEntriesBySection(sectionId) {
     })
     .filter((entry) => entry.wrongCount > 0)
     .sort((a, b) => b.wrongCount - a.wrongCount);
+}
+
+export function getRecentStudyRecords(limit = 10, sectionId = null) {
+  const data = getData();
+
+  let records = [...data.studyRecords].sort(
+    (a, b) => new Date(b.studiedAt).getTime() - new Date(a.studiedAt).getTime()
+  );
+
+  if (sectionId) {
+    const wordIds = new Set(
+      data.words.filter((word) => word.sectionId === sectionId).map((word) => word.id)
+    );
+    records = records.filter((record) => wordIds.has(record.wordId));
+  }
+
+  return records.slice(0, limit).map((record) => {
+    const word = data.words.find((item) => item.id === record.wordId);
+    return {
+      ...record,
+      word: word || null
+    };
+  });
+}
+
+export function getSectionDifficulty(sectionId) {
+  const stats = getStudyStatsBySection(sectionId);
+
+  if (stats.total === 0) {
+    return {
+      label: "미측정",
+      className: "diff-none"
+    };
+  }
+
+  if (stats.accuracy < 50) {
+    return {
+      label: "🔴 어려움",
+      className: "diff-hard"
+    };
+  }
+
+  if (stats.accuracy < 80) {
+    return {
+      label: "🟡 보통",
+      className: "diff-mid"
+    };
+  }
+
+  return {
+    label: "🟢 쉬움",
+    className: "diff-easy"
+  };
+}
+
+export function setArchiveEditTarget(wordId) {
+  sessionStorage.setItem(ARCHIVE_EDIT_TARGET_KEY, wordId);
+}
+
+export function consumeArchiveEditTarget() {
+  const target = sessionStorage.getItem(ARCHIVE_EDIT_TARGET_KEY);
+  sessionStorage.removeItem(ARCHIVE_EDIT_TARGET_KEY);
+  return target;
 }
