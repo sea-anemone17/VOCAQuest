@@ -203,6 +203,32 @@ function moveNext() {
   renderCurrentWord();
 }
 
+function getPromptText(word) {
+  if (!word) return "";
+  return quizDirection === "meaning-to-word"
+    ? (word.meanings || []).join(" / ")
+    : word.word || "";
+}
+
+function getCorrectAnswerText(word) {
+  if (!word) return "";
+  return quizDirection === "meaning-to-word"
+    ? (word.word || "")
+    : (word.meanings || []).join(" / ");
+}
+
+function judgeWordAnswer(userAnswer, wordText) {
+  const normalizedUser = normalizeText(userAnswer);
+  const normalizedWord = normalizeText(wordText);
+  if (!normalizedUser || !normalizedWord) return false;
+
+  return (
+    normalizedUser === normalizedWord ||
+    normalizedUser.includes(normalizedWord) ||
+    normalizedWord.includes(normalizedUser)
+  );
+}
+
 function judgeAnswer(userAnswer, meanings) {
   const normalizedUser = normalizeText(userAnswer);
   if (!normalizedUser) return false;
