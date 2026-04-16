@@ -165,8 +165,10 @@ function renderCurrentWord() {
   renderProgress();
 
   if (!currentWord) {
-    studyCard.innerHTML = `<p class="muted">출제할 단어가 없습니다.</p>`;
-    return;
+   studyCard.innerHTML = currentQueue.length === 0
+     ? `<p class="muted">학습 시작 버튼을 눌러 주세요.</p>`
+     : `<p class="muted">문제를 불러오는 중입니다.</p>`;
+   return;
   }
 
   const tagText = (currentWord.tags || [])
