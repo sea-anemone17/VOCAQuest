@@ -23,6 +23,12 @@
       <section class="card">
         <h2>학습 설정</h2>
 
+        <label for="studyDirectionSelect">출제 방향</label>
+        <select id="studyDirectionSelect">
+         <option value="word-to-meaning">단어 → 뜻</option>
+         <option value="meaning-to-word">뜻 → 단어</option>
+        </select>
+
         <div class="form-block">
           <label class="input-group">
             <span>책 선택</span>
@@ -85,7 +91,7 @@
 
         <form id="answerForm" class="form-block">
           <label class="input-group">
-            <span>뜻 입력</span>
+            <span>정답 입력</span>
             <input type="text" id="answerInput" placeholder="뜻을 입력하세요" />
           </label>
 
