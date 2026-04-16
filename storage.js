@@ -147,7 +147,7 @@ export async function initData() {
   }
 
   try {
-    const response = await fetch("./data/defaultBooks.json");
+    const response = await fetch("./defaultBooks.json");
     if (!response.ok) {
       throw new Error("기본 데이터 로드 실패");
     }
