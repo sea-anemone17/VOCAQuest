@@ -72,49 +72,6 @@ function getCurrentScenario() {
   return scenarios.find((scenario) => scenario.id === gameState.scenarioId) || null;
 }
 
-function renderBookOptions() {
-  const data = getData();
-
-  if (!data.books.length) {
-    trpgBookSelect.innerHTML = `<option value="">책 없음</option>`;
-    trpgSectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
-    return;
-  }
-
-  trpgBookSelect.innerHTML = data.books
-    .map((book) => `<option value="${book.id}">${book.title}</option>`)
-    .join("");
-
-  renderSectionOptions();
-}
-
-function renderSectionOptions() {
-  const data = getData();
-  const bookId = trpgBookSelect.value;
-  const sections = data.sections.filter((section) => section.bookId === bookId);
-
-  if (!sections.length) {
-    trpgSectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
-    return;
-  }
-
-  trpgSectionSelect.innerHTML = sections
-    .sort((a, b) => a.order - b.order)
-    .map((section) => `<option value="${section.id}">${section.title}</option>`)
-    .join("");
-}
-
-function renderScenarioOptions() {
-  if (!scenarios.length) {
-    scenarioSelect.innerHTML = `<option value="">시나리오 없음</option>`;
-    return;
-  }
-
-  scenarioSelect.innerHTML = scenarios
-    .map((scenario) => `<option value="${scenario.id}">${scenario.title}</option>`)
-    .join("");
-}
-
 function getWordsInSection(sectionId) {
   const data = getData();
   return data.words.filter((word) => word.sectionId === sectionId);
@@ -170,13 +127,65 @@ function pickUnusedPreferredWord(actionType, sectionId) {
   return pickRandom(matched.length ? matched : candidateBase);
 }
 
+function renderBookOptions() {
+  const data = getData();
+
+  if (!trpgBookSelect || !trpgSectionSelect) return;
+
+  if (!data.books.length) {
+    trpgBookSelect.innerHTML = `<option value="">책 없음</option>`;
+    trpgSectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
+    return;
+  }
+
+  trpgBookSelect.innerHTML = data.books
+    .map((book) => `<option value="${book.id}">${escapeHtml(book.title)}</option>`)
+    .join("");
+
+  renderSectionOptions();
+}
+
+function renderSectionOptions() {
+  const data = getData();
+  const bookId = trpgBookSelect?.value;
+
+  if (!trpgSectionSelect) return;
+
+  const sections = data.sections.filter((section) => section.bookId === bookId);
+
+  if (!sections.length) {
+    trpgSectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
+    return;
+  }
+
+  trpgSectionSelect.innerHTML = sections
+    .sort((a, b) => a.order - b.order)
+    .map((section) => `<option value="${section.id}">${escapeHtml(section.title)}</option>`)
+    .join("");
+}
+
+function renderScenarioOptions() {
+  if (!scenarioSelect) return;
+
+  if (!scenarios.length) {
+    scenarioSelect.innerHTML = `<option value="">시나리오 없음</option>`;
+    return;
+  }
+
+  scenarioSelect.innerHTML = scenarios
+    .map((scenario) => `<option value="${scenario.id}">${escapeHtml(scenario.title)}</option>`)
+    .join("");
+}
+
 function updateStateBox() {
   const scenario = getCurrentScenario();
   const maxTurns = scenario?.loopConfig?.maxTurns || 0;
 
-  sceneCounter.textContent = `${gameState.turnCount} / ${maxTurns}`;
-  clueCountEl.textContent = String(gameState.clueCount);
-  mistakeCountEl.textContent = String(gameState.mistakeCount);
+  if (sceneCounter) sceneCounter.textContent = `${gameState.turnCount} / ${maxTurns}`;
+  if (clueCountEl) clueCountEl.textContent = String(gameState.clueCount);
+  if (mistakeCountEl) mistakeCountEl.textContent = String(gameState.mistakeCount);
+
+  if (!scenarioStatus) return;
 
   if (gameState.ended) {
     scenarioStatus.textContent = "종결";
@@ -199,6 +208,8 @@ function updateStateBox() {
 function renderIntro() {
   const scenario = getCurrentScenario();
 
+  if (!scenarioTitle || !scenarioIntroBox) return;
+
   if (!scenario) {
     scenarioTitle.textContent = "시나리오";
     scenarioIntroBox.innerHTML = `<p class="muted">시나리오를 시작해 주세요.</p>`;
@@ -211,6 +222,8 @@ function renderIntro() {
 
 function renderSceneChoiceMenu() {
   const scenario = getCurrentScenario();
+
+  if (!sceneBox) return;
 
   if (!scenario || gameState.ended) {
     sceneBox.innerHTML = `<p class="muted">시나리오를 시작해 주세요.</p>`;
@@ -233,7 +246,7 @@ function renderSceneChoiceMenu() {
   const buttonsHtml = scenario.actionTypes
     .map(
       (action) => `
-        <button class="button" data-action-type="${action.id}">
+        <button class="button" data-action-type="${action.id}" type="button">
           ${escapeHtml(action.label)}
         </button>
       `
@@ -248,6 +261,8 @@ function renderSceneChoiceMenu() {
 }
 
 function renderWordEvent() {
+  if (!wordEventBox) return;
+
   if (!gameState.currentWord || !gameState.currentActionType || gameState.ended) {
     wordEventBox.classList.add("hidden");
     return;
@@ -256,17 +271,22 @@ function renderWordEvent() {
   const word = gameState.currentWord;
   const tagText = (word.tags || []).map((tag) => getTagLabel(word.pos, tag)).join(", ");
 
-  trpgWordText.textContent = word.word;
-  trpgWordMeta.textContent =
-    `품사: ${getPosLabel(word.pos)} · 정서: ${getToneLabel(word.tone)} · 태그: ${tagText || "없음"}`;
+  if (trpgWordText) trpgWordText.textContent = word.word;
+  if (trpgWordMeta) {
+    trpgWordMeta.textContent =
+      `품사: ${getPosLabel(word.pos)} · 정서: ${getToneLabel(word.tone)} · 태그: ${tagText || "없음"}`;
+  }
 
-  trpgAnswerInput.value = "";
-  trpgResultBox.innerHTML = "";
-  trpgJudgeConfirmBox.classList.add("hidden");
+  if (trpgAnswerInput) trpgAnswerInput.value = "";
+  if (trpgResultBox) trpgResultBox.innerHTML = "";
+  if (trpgJudgeConfirmBox) trpgJudgeConfirmBox.classList.add("hidden");
+
   wordEventBox.classList.remove("hidden");
 }
 
 function renderChoicePool() {
+  if (!sceneChoiceBox || !choiceButtons) return;
+
   if (!gameState.currentActionType || !gameState.resolvedThisTurn || gameState.ended) {
     sceneChoiceBox.classList.add("hidden");
     choiceButtons.innerHTML = "";
@@ -278,7 +298,7 @@ function renderChoicePool() {
   const buttonsHtml = (gameState.currentChoicePool || [])
     .map(
       (choice) => `
-        <button class="button" data-choice-id="${choice.id}">
+        <button class="button" data-choice-id="${choice.id}" type="button">
           ${escapeHtml(choice.label)}
         </button>
       `
@@ -289,6 +309,8 @@ function renderChoicePool() {
 }
 
 function renderJournal() {
+  if (!journalBox) return;
+
   if (!gameState.journal.length) {
     journalBox.innerHTML = `<div class="empty-state">아직 기록이 없습니다.</div>`;
     return;
@@ -316,7 +338,6 @@ function getEndingLevelText(scenario) {
 function getRouteSummaryText(scenario) {
   const actionBias = getTopKey(gameState.routeCounts);
   if (!actionBias) return "";
-
   return scenario.routeSummaries?.[actionBias] || "";
 }
 
@@ -337,6 +358,8 @@ function getChoiceRouteFlavor() {
 }
 
 function renderEnding() {
+  if (!endingBox || !endingText) return;
+
   if (!gameState.ended) {
     endingBox.classList.add("hidden");
     endingText.innerHTML = "";
@@ -363,6 +386,8 @@ function renderEnding() {
 }
 
 function renderAll() {
+  renderBookOptions();
+  renderScenarioOptions();
   updateStateBox();
   renderIntro();
   renderSceneChoiceMenu();
@@ -400,6 +425,8 @@ function beginInterpretation(userAnswer) {
     autoJudgedCorrect
   };
 
+  if (!trpgResultBox || !trpgJudgeHintText || !trpgJudgeConfirmBox) return;
+
   if (autoJudgedCorrect) {
     trpgResultBox.innerHTML = `<span class="result-correct">자동 판정: 정답 후보 ✅</span>`;
     trpgJudgeHintText.textContent =
@@ -432,12 +459,19 @@ function finalizeInterpretation(finalCorrect) {
 
   const actionType = gameState.currentActionType;
 
+  if (trpgResultBox) {
+    if (finalCorrect) {
+      trpgResultBox.innerHTML = `<span class="result-correct">해석 성공 ✅</span>`;
+    } else {
+      trpgResultBox.innerHTML = `<span class="result-wrong">해석 실패 ❌</span>`;
+    }
+  }
+
   if (finalCorrect) {
     const successText =
       gameState.currentSuccessText ||
       pickTextFromPool(actionType.successTextPool, actionType.successText || "");
 
-    trpgResultBox.innerHTML = `<span class="result-correct">해석 성공 ✅</span>`;
     if (successText) {
       gameState.journal.push(successText);
     }
@@ -453,7 +487,6 @@ function finalizeInterpretation(finalCorrect) {
       gameState.currentFailureText ||
       pickTextFromPool(actionType.failureTextPool, actionType.failureText || "");
 
-    trpgResultBox.innerHTML = `<span class="result-wrong">해석 실패 ❌</span>`;
     if (failureText) {
       gameState.journal.push(failureText);
     }
@@ -473,7 +506,10 @@ function finalizeInterpretation(finalCorrect) {
   gameState.currentChoicePool = [...(actionType.choicePool || [])];
   gameState.resolvedThisTurn = true;
   pendingSubmission = null;
-  trpgJudgeConfirmBox.classList.add("hidden");
+
+  if (trpgJudgeConfirmBox) {
+    trpgJudgeConfirmBox.classList.add("hidden");
+  }
 
   checkEndingCondition();
   renderAll();
@@ -559,8 +595,8 @@ function checkEndingCondition() {
 }
 
 function startScenario() {
-  const scenarioId = scenarioSelect.value;
-  const sectionId = trpgSectionSelect.value;
+  const scenarioId = scenarioSelect?.value;
+  const sectionId = trpgSectionSelect?.value;
 
   if (!scenarioId || !sectionId) {
     alert("책, 섹션, 시나리오를 모두 선택해 주세요.");
@@ -571,66 +607,85 @@ function startScenario() {
   gameState.scenarioId = scenarioId;
   gameState.sectionId = sectionId;
 
-  endingBox.classList.add("hidden");
-  endingText.innerHTML = "";
+  if (endingBox) endingBox.classList.add("hidden");
+  if (endingText) endingText.innerHTML = "";
+
   renderAll();
 }
 
 function attachEvents() {
-  trpgBookSelect.addEventListener("change", () => {
-    renderSectionOptions();
-  });
+  if (trpgBookSelect) {
+    trpgBookSelect.addEventListener("change", () => {
+      renderSectionOptions();
+    });
+  }
 
-  startScenarioBtn.addEventListener("click", () => {
-    startScenario();
-  });
+  if (startScenarioBtn) {
+    startScenarioBtn.addEventListener("click", () => {
+      startScenario();
+    });
+  }
 
-  restartScenarioBtn.addEventListener("click", () => {
-    startScenario();
-  });
+  if (restartScenarioBtn) {
+    restartScenarioBtn.addEventListener("click", () => {
+      startScenario();
+    });
+  }
 
-  sceneBox.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
+  if (sceneBox) {
+    sceneBox.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
 
-    const actionTypeId = button.dataset.actionType;
-    if (actionTypeId) {
-      startTurnWithAction(actionTypeId);
-    }
-  });
+      const actionTypeId = button.dataset.actionType;
+      if (actionTypeId) {
+        startTurnWithAction(actionTypeId);
+      }
+    });
+  }
 
-  trpgAnswerForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    if (!gameState.currentWord || pendingSubmission || gameState.resolvedThisTurn || gameState.ended) {
-      return;
-    }
+  if (trpgAnswerForm) {
+    trpgAnswerForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!gameState.currentWord || pendingSubmission || gameState.resolvedThisTurn || gameState.ended) {
+        return;
+      }
 
-    const userAnswer = trpgAnswerInput.value.trim();
-    beginInterpretation(userAnswer);
-  });
+      const userAnswer = trpgAnswerInput?.value?.trim() || "";
+      beginInterpretation(userAnswer);
+    });
+  }
 
-  trpgShowAnswerBtn.addEventListener("click", () => {
-    if (!gameState.currentWord) return;
-    trpgResultBox.innerHTML = `정답: <strong>${escapeHtml((gameState.currentWord.meanings || []).join(" / "))}</strong>`;
-  });
+  if (trpgShowAnswerBtn) {
+    trpgShowAnswerBtn.addEventListener("click", () => {
+      if (!gameState.currentWord || !trpgResultBox) return;
+      trpgResultBox.innerHTML = `정답: <strong>${escapeHtml((gameState.currentWord.meanings || []).join(" / "))}</strong>`;
+    });
+  }
 
-  trpgConfirmCorrectBtn.addEventListener("click", () => {
-    finalizeInterpretation(true);
-  });
+  if (trpgConfirmCorrectBtn) {
+    trpgConfirmCorrectBtn.addEventListener("click", () => {
+      finalizeInterpretation(true);
+    });
+  }
 
-  trpgConfirmWrongBtn.addEventListener("click", () => {
-    finalizeInterpretation(false);
-  });
+  if (trpgConfirmWrongBtn) {
+    trpgConfirmWrongBtn.addEventListener("click", () => {
+      finalizeInterpretation(false);
+    });
+  }
 
-  choiceButtons.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
+  if (choiceButtons) {
+    choiceButtons.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
 
-    const choiceId = button.dataset.choiceId;
-    if (choiceId) {
-      finishTurnWithChoice(choiceId);
-    }
-  });
+      const choiceId = button.dataset.choiceId;
+      if (choiceId) {
+        finishTurnWithChoice(choiceId);
+      }
+    });
+  }
 }
 
 async function main() {
