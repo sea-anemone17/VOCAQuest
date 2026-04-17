@@ -57,6 +57,7 @@ let quizDirection = "word-to-meaning";
 
 function renderBookOptions() {
   const data = getData();
+
   if (!data.books.length) {
     studyBookSelect.innerHTML = `<option value="">책 없음</option>`;
     studySectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
@@ -64,7 +65,9 @@ function renderBookOptions() {
   }
 
   studyBookSelect.innerHTML = data.books
-    .map((book) => `<option value="${book.id}">${book.title}</option>`)
+    .map(
+      (book) => `<option value="${book.id}">${escapeHtml(book.title)}</option>`
+    )
     .join("");
 
   renderSectionOptions();
@@ -87,7 +90,10 @@ function renderSectionOptions() {
 
   studySectionSelect.innerHTML = sections
     .sort((a, b) => a.order - b.order)
-    .map((section) => `<option value="${section.id}">${section.title}</option>`)
+    .map(
+      (section) =>
+        `<option value="${section.id}">${escapeHtml(section.title)}</option>`
+    )
     .join("");
 
   renderStats();
