@@ -1,5 +1,5 @@
 import { generateId, nowISO, normalizeText } from "./utils.js";
-import { supabase } from "./supabase.js";
+import { supabase, getCurrentUserId } from "./supabase.js";
 
 const STORAGE_KEY = "word_trpg_data";
 const CURRENT_SCHEMA_VERSION = 4;
