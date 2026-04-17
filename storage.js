@@ -336,6 +336,25 @@ export function addStudyRecord(recordData) {
   return record;
 }
 
+export function clearWrongNoteByWord(wordId, sectionId = null) {
+  const data = getData();
+
+  const targetWord = data.words.find((word) => word.id === wordId);
+  if (!targetWord) return false;
+
+  data.studyRecords = data.studyRecords.filter((record) => {
+    if (record.wordId !== wordId) return true;
+    if (record.finalCorrect) return true;
+
+    if (sectionId && targetWord.sectionId !== sectionId) return true;
+
+    return false;
+  });
+
+  saveData(data);
+  return true;
+}
+
 export function getWrongWordIdsBySection(sectionId) {
   const data = getData();
   const wordIdsInSection = new Set(
@@ -370,18 +389,23 @@ export function getWrongNoteEntriesBySection(sectionId) {
 
   return words
     .map((word) => {
-      const records = data.studyRecords.filter((record) => record.wordId === word.id);
+      const records = data.studyRecords
+        .filter((record) => record.wordId === word.id)
+        .sort((a, b) => new Date(b.studiedAt).getTime() - new Date(a.studiedAt).getTime());
+
       const wrongCount = records.filter((record) => !record.finalCorrect).length;
       const correctCount = records.filter((record) => record.finalCorrect).length;
+      const latestRecord = records[0] || null;
 
       return {
         ...word,
         wrongCount,
         correctCount,
-        totalCount: records.length
+        totalCount: records.length,
+        latestWrong: latestRecord ? !latestRecord.finalCorrect : false
       };
     })
-    .filter((entry) => entry.wrongCount > 0)
+    .filter((entry) => entry.latestWrong)
     .sort((a, b) => b.wrongCount - a.wrongCount);
 }
 
