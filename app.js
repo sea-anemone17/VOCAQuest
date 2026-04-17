@@ -11,7 +11,17 @@ const loginBtn = document.getElementById("login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const authMessage = document.getElementById("auth-message");
 
-async function renderStats() {
+function showAuthScreen() {
+  if (authScreen) authScreen.style.display = "block";
+  if (appScreen) appScreen.style.display = "none";
+}
+
+function showAppScreen() {
+  if (authScreen) authScreen.style.display = "none";
+  if (appScreen) appScreen.style.display = "block";
+}
+
+function renderStats() {
   const data = getData();
   const recentStats = getRecentStudyStats();
 
@@ -30,17 +40,7 @@ async function renderStats() {
 
 async function initApp() {
   await initData();
-  await renderStats();
-}
-
-function showAuthScreen() {
-  if (authScreen) authScreen.style.display = "block";
-  if (appScreen) appScreen.style.display = "none";
-}
-
-function showAppScreen() {
-  if (authScreen) authScreen.style.display = "none";
-  if (appScreen) appScreen.style.display = "block";
+  renderStats();
 }
 
 async function refreshAuthState() {
