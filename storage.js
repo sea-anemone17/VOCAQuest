@@ -391,3 +391,80 @@ export function getRecentStudyStats(sectionId = null) {
     accuracy
   };
 }
+
+export function isDuplicateWordInSection(sectionId, wordText, pos, excludeWordId = null) {
+  const data = getData();
+  const targetWord = normalizeText(wordText);
+  const targetPos = pos?.trim();
+
+  return data.words.some((word) => {
+    if (word.sectionId !== sectionId) return false;
+    if (excludeWordId && word.id === excludeWordId) return false;
+
+    return normalizeText(word.word) === targetWord && word.pos === targetPos;
+  });
+}
+
+export function parseMeanings(inputText) {
+  return [
+    ...new Set(
+      inputText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+    )
+  ];
+}
+
+export function updateWord(wordId, patch) {
+  const data = getData();
+  const target = data.words.find((word) => word.id === wordId);
+  if (!target) return null;
+
+  target.word = patch.word?.trim() ?? target.word;
+  target.meanings = Array.isArray(patch.meanings) ? patch.meanings : target.meanings;
+  target.pos = patch.pos ?? target.pos;
+  target.tone = patch.tone ?? target.tone;
+  target.tags = Array.isArray(patch.tags) ? patch.tags : target.tags;
+  target.favorite =
+    typeof patch.favorite === "boolean" ? patch.favorite : target.favorite;
+  target.example = patch.example?.trim() ?? target.example;
+  target.memo = patch.memo?.trim() ?? target.memo;
+
+  saveData(data);
+  return target;
+}
+
+export function toggleFavorite(wordId) {
+  const data = getData();
+  const target = data.words.find((word) => word.id === wordId);
+  if (!target) return null;
+
+  target.favorite = !target.favorite;
+  saveData(data);
+  return target.favorite;
+}
+
+export function getWordById(wordId) {
+  const data = getData();
+  return data.words.find((word) => word.id === wordId) || null;
+}
+
+export function consumeArchiveEditTarget() {
+  const target = sessionStorage.getItem(ARCHIVE_EDIT_TARGET_KEY);
+  sessionStorage.removeItem(ARCHIVE_EDIT_TARGET_KEY);
+  return target;
+}
+
+export function getStorageSummary() {
+  const data = getData();
+  return {
+    schemaVersion: data.schemaVersion || CURRENT_SCHEMA_VERSION,
+    lastUpdatedAt: data.lastUpdatedAt || null,
+    bookCount: data.books.length,
+    sectionCount: data.sections.length,
+    wordCount: data.words.length,
+    recordCount: data.studyRecords.length,
+    favoriteCount: data.words.filter((word) => word.favorite).length
+  };
+}
