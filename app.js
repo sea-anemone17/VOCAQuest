@@ -38,12 +38,25 @@ function renderStats() {
   }
 }
 
+async function showUserInfo() {
+  const { data } = await supabase.auth.getUser();
+  const el = document.getElementById("user-info");
+
+  if (data?.user && el) {
+    el.textContent = `로그인: ${data.user.email}`;
+  }
+}
+
 async function initApp() {
   await initData();
   renderStats();
+  await showUserInfo();
 }
 
 async function refreshAuthState() {
+  const loading = document.getElementById("loading-message");
+  if (loading) loading.style.display = "block";
+
   const userId = await getCurrentUserId();
 
   if (userId) {
@@ -52,6 +65,8 @@ async function refreshAuthState() {
   } else {
     showAuthScreen();
   }
+
+  if (loading) loading.style.display = "none";
 }
 
 if (signupBtn) {
@@ -87,7 +102,7 @@ if (loginBtn) {
     const result = await signIn(email, password);
 
     if (result) {
-      if (authMessage) authMessage.textContent = "로그인 성공";
+      if (authMessage) authMessage.textContent = "";
       await refreshAuthState();
     }
   });
