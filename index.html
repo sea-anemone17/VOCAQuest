@@ -14,19 +14,17 @@
     </header>
 
     <!-- 로그인 화면 -->
-    <div id="auth-screen">
-      <section class="card">
-        <h2>로그인</h2>
-        <input id="email" type="email" placeholder="이메일" />
-        <input id="password" type="password" placeholder="비밀번호" />
-        <div class="button-row">
-          <button id="signup-btn">회원가입</button>
-          <button id="login-btn">로그인</button>
-        </div>
-        <p id="auth-message"></p>
-      </section>
+    <div id="auth-screen" class="card auth-card">
+     <h2>로그인</h2>
+     <input id="email" type="email" placeholder="이메일" />
+     <input id="password" type="password" placeholder="비밀번호" />
+     <div class="button-row auth-actions">
+      <button id="signup-btn">회원가입</button>
+      <button id="login-btn">로그인</button>
+     </div>
+     <p id="auth-message"></p>
     </div>
-
+    
     <!-- 앱 본체 -->
     <div id="app-screen" style="display: none;">
       <main class="home-grid">
