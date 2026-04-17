@@ -507,6 +507,21 @@ async function main() {
       setArchiveEditTarget(id);
       window.location.href = "./archive.html";
     }
+
+    if (action === "clear-wrong") {
+      const currentSectionId = studySectionSelect.value;
+
+      const ok = confirm("이 단어를 오답노트에서 지울까요?");
+      if (!ok) return;
+
+      clearWrongNoteByWord(id, currentSectionId);
+
+      renderWrongNote();
+      renderRecentStudy();
+      renderStats();
+      renderDifficulty();
+      return;
+    }
   });
 
   renderStats();
