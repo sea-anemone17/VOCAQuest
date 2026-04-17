@@ -1,4 +1,5 @@
 import { generateId, nowISO, normalizeText } from "./utils.js";
+import { supabase } from "./supabase.js";
 
 const STORAGE_KEY = "word_trpg_data";
 const CURRENT_SCHEMA_VERSION = 4;
@@ -20,6 +21,51 @@ function createEmptyData() {
     words: [],
     studyRecords: []
   };
+}
+
+const CLOUD_USER_ID = "test-user";
+
+async function loadCloudData() {
+  const { data, error } = await supabase
+    .from("user_data")
+    .select("data")
+    .eq("user_id", CLOUD_USER_ID)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("클라우드 불러오기 실패:", error);
+    return null;
+  }
+
+  return data?.data ?? null;
+}
+
+async function saveCloudData(appData) {
+  const payload = {
+    user_id: CLOUD_USER_ID,
+    data: appData,
+    updated_at: nowISO()
+  };
+
+  const { error } = await supabase
+    .from("user_data")
+    .delete()
+    .eq("user_id", CLOUD_USER_ID);
+
+  if (error) {
+    console.error("기존 클라우드 데이터 삭제 실패:", error);
+    return;
+  }
+
+  const { error: insertError } = await supabase
+    .from("user_data")
+    .insert(payload);
+
+  if (insertError) {
+    console.error("클라우드 저장 실패:", insertError);
+  }
 }
 
 /* =========================
@@ -126,6 +172,8 @@ export function saveData(data) {
   const safe = migrateData(data);
   safe.lastUpdatedAt = nowISO();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(safe));
+
+  saveCloudData(safe);
 }
 
 export function replaceData(newData) {
@@ -155,8 +203,14 @@ function tryMigrateLegacyKeys() {
 }
 
 export async function initData() {
-  const existing = localStorage.getItem(STORAGE_KEY);
+  const cloud = await loadCloudData();
+  if (cloud) {
+    const migrated = migrateData(cloud);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+    return migrated;
+  }
 
+  const existing = localStorage.getItem(STORAGE_KEY);
   if (existing) {
     const data = getData();
     saveData(data);
@@ -169,7 +223,6 @@ export async function initData() {
   try {
     const res = await fetch("./defaultBooks.json");
     if (!res.ok) throw new Error();
-
     const migrated = migrateData(await res.json());
     saveData(migrated);
     return migrated;
