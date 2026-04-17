@@ -8,7 +8,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({
     email,
-    password
+    password,
+    options: {
+      emailRedirectTo: "https://sea-anemone17.github.io/VOCAQuest/"
+    }
   });
 
   if (error) {
