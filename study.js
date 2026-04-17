@@ -7,7 +7,8 @@ import {
   getWrongNoteEntriesBySection,
   getRecentStudyRecords,
   getSectionDifficulty,
-  setArchiveEditTarget
+  setArchiveEditTarget,
+  clearWrongNoteByWord
 } from "./storage.js";
 import { getPosLabel, getToneLabel, getTagLabel } from "./tags.js";
 import { normalizeText, escapeHtml, shuffleArray } from "./utils.js";
