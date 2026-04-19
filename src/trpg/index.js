@@ -211,9 +211,17 @@ function handleActionClick(event, els) {
     <h3>${action.label}</h3>
     <p>${action.description || "조사를 진행합니다."}</p>
     <div class="button-row">
-      <button class="button primary" type="button" id="backToActionsBtn">다시 행동 선택</button>
+      <button class="button primary" type="button" id="nextSceneBtn">다음 장면으로</button>
+      <button class="button" type="button" id="backToActionsBtn">다시 행동 선택</button>
     </div>
   `;
+
+  const nextBtn = document.getElementById("nextSceneBtn");
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      goToNextScene(els);
+    });
+  }
 
   const backBtn = document.getElementById("backToActionsBtn");
   if (backBtn) {
@@ -221,6 +229,33 @@ function handleActionClick(event, els) {
       renderActionMenu(els);
     });
   }
+}
+
+function goToNextScene(els) {
+  if (!gameState) return;
+
+  const scenario = getScenarioById(gameState.scenarioId);
+  const maxTurns = scenario?.loopConfig?.maxTurns ?? 0;
+
+  gameState.sceneIndex += 1;
+
+  if (gameState.sceneIndex >= maxTurns) {
+    gameState.ended = true;
+
+    updateStats(els);
+
+    if (els.sceneBox) {
+      els.sceneBox.innerHTML = `
+        <h3>조사 종료</h3>
+        <p>더 이상 진행할 장면이 없습니다.</p>
+      `;
+    }
+
+    return;
+  }
+
+  updateStats(els);
+  renderActionMenu(els);
 }
 
 async function init() {
