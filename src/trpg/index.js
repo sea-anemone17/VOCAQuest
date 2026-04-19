@@ -194,7 +194,6 @@ function finalizeInterpretation(finalCorrect) {
     els.trpgJudgeConfirmBox.classList.add("hidden");
   }
 
-  checkEndingCondition(gameState, getScenario(), clearCurrentTurn);
   render();
 }
 
