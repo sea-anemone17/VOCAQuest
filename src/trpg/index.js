@@ -1,65 +1,125 @@
-import { getData } from "../storage.js";
+import { initData, getData } from "../storage.js";
 
 function getElements() {
   return {
     bookSelect: document.getElementById("trpgBookSelect"),
     sectionSelect: document.getElementById("trpgSectionSelect"),
+    scenarioSelect: document.getElementById("scenarioSelect"),
+    difficultySelect: document.getElementById("difficultySelect"),
+    startBtn: document.getElementById("startScenarioBtn")
   };
 }
 
-// 책 옵션 렌더
 function renderBooks(bookSelect, data) {
   bookSelect.innerHTML = "";
 
-  if (!data.books || data.books.length === 0) {
+  const books = data.books || [];
+
+  if (books.length === 0) {
     const opt = document.createElement("option");
+    opt.value = "";
     opt.textContent = "책 없음";
     bookSelect.appendChild(opt);
     return;
   }
 
-  data.books.forEach((book, idx) => {
+  books.forEach((book) => {
     const opt = document.createElement("option");
-    opt.value = idx;
-    opt.textContent = book.title || `Book ${idx + 1}`;
+    opt.value = book.id;
+    opt.textContent = book.title || "제목 없음";
     bookSelect.appendChild(opt);
   });
 }
 
-// 섹션 옵션 렌더
-function renderSections(sectionSelect, data, bookIndex) {
+function renderSections(sectionSelect, data, bookId) {
   sectionSelect.innerHTML = "";
 
-  const book = data.books?.[bookIndex];
-  if (!book || !book.sections) return;
+  const sections = (data.sections || [])
+    .filter((section) => section.bookId === bookId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  book.sections.forEach((section, idx) => {
+  if (sections.length === 0) {
     const opt = document.createElement("option");
-    opt.value = idx;
-    opt.textContent = section.title || `Section ${idx + 1}`;
+    opt.value = "";
+    opt.textContent = "섹션 없음";
+    sectionSelect.appendChild(opt);
+    return;
+  }
+
+  sections.forEach((section) => {
+    const opt = document.createElement("option");
+    opt.value = section.id;
+    opt.textContent = section.title || "제목 없음";
     sectionSelect.appendChild(opt);
   });
 }
 
-// 초기화
-function init() {
-  const { bookSelect, sectionSelect } = getElements();
+function renderScenarios(scenarioSelect) {
+  if (!scenarioSelect) return;
+
+  scenarioSelect.innerHTML = "";
+
+  const demoScenarios = [
+    { id: "closed-corridor", title: "닫힌 복도" },
+    { id: "archive-beneath-dust", title: "먼지 아래의 기록보관소" },
+    { id: "signal-lost-station", title: "신호가 끊긴 역" },
+    { id: "city-noise-walk", title: "도시의 소음 산책" },
+    { id: "forest-unmarked-path", title: "표식 없는 숲길" }
+  ];
+
+  demoScenarios.forEach((scenario) => {
+    const opt = document.createElement("option");
+    opt.value = scenario.id;
+    opt.textContent = scenario.title;
+    scenarioSelect.appendChild(opt);
+  });
+}
+
+function renderDifficulties(difficultySelect) {
+  if (!difficultySelect) return;
+
+  difficultySelect.innerHTML = `
+    <option value="easy">Easy</option>
+    <option value="normal">Normal</option>
+    <option value="hard">Hard</option>
+  `;
+}
+
+async function init() {
+  await initData();
+
+  const els = getElements();
   const data = getData();
 
-  if (!bookSelect || !sectionSelect) {
-    console.error("select 요소 없음");
+  if (!els.bookSelect || !els.sectionSelect) {
+    alert("책/섹션 select를 찾을 수 없습니다.");
     return;
   }
 
-  renderBooks(bookSelect, data);
+  renderBooks(els.bookSelect, data);
 
-  // 처음 섹션 렌더
-  renderSections(sectionSelect, data, bookSelect.value);
+  const firstBookId = els.bookSelect.value;
+  renderSections(els.sectionSelect, data, firstBookId);
 
-  // 책 바뀌면 섹션 갱신
-  bookSelect.addEventListener("change", () => {
-    renderSections(sectionSelect, data, bookSelect.value);
+  renderScenarios(els.scenarioSelect);
+  renderDifficulties(els.difficultySelect);
+
+  els.bookSelect.addEventListener("change", () => {
+    renderSections(els.sectionSelect, data, els.bookSelect.value);
   });
+
+  if (els.startBtn) {
+    els.startBtn.addEventListener("click", () => {
+      alert(
+        [
+          `책: ${els.bookSelect.value || "(없음)"}`,
+          `섹션: ${els.sectionSelect.value || "(없음)"}`,
+          `시나리오: ${els.scenarioSelect?.value || "(없음)"}`,
+          `난이도: ${els.difficultySelect?.value || "(없음)"}`
+        ].join("\n")
+      );
+    });
+  }
 }
 
 init();
