@@ -40,7 +40,7 @@ export const archiveBeneathDustScenario = {
         "먼지의 분포, 서가의 기울기, 손이 닿은 흔적의 위치를 훑으며 이 방이 어떻게 사용되었는지 감지하려 한다."
       ],
 
-      preferredTags: ["place", "document", "time", "object"],
+      preferredTags: ["space", "document", "object", "atmosphere"],
       preferredPos: ["noun", "adjective"],
 
       successTextPool: [
@@ -196,7 +196,7 @@ export const archiveBeneathDustScenario = {
         "남은 문서들의 논리와 흐름을 따라가며, 사라진 기록이 어떤 결론을 향하고 있었는지 재구성하려 한다."
       ],
 
-      preferredTags: ["concept", "authority", "document", "time"],
+      preferredTags: ["concept", "authority", "document", "thought"],
       preferredPos: ["noun", "adjective"],
 
       successTextPool: [
