@@ -1,5 +1,5 @@
 import { getData } from "../storage.js";
-import { scenarios } from "../scenarios/index.js";
+import { scenarios } from "../../scenarios/index.js";
 import { getPosLabel, getToneLabel, getTagLabel } from "../tags.js";
 
 import { getDifficultyPreset } from "./trpgConfig.js";
