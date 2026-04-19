@@ -1,5 +1,3 @@
-alert("index loaded");
-
 import { getData } from "../storage.js";
 import { scenarios } from "../../scenarios/index.js";
 import { getPosLabel, getToneLabel, getTagLabel } from "../tags.js";
