@@ -4,6 +4,13 @@ export function renderChoicePool({ els, gameState }) {
 
   if (!els.sceneChoiceBox || !els.choiceButtons) return;
 
+  alert(JSON.stringify({
+  action: !!gameState.currentActionType,
+  resolved: gameState.resolvedThisTurn,
+  ended: gameState.ended,
+  choiceLen: (gameState.currentChoicePool || []).length
+}));
+
 
 import { escapeHtml } from "../utils.js";
 import { getDifficultyPreset, QUIZ_MODE_LABELS } from "./trpgConfig.js";
