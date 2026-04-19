@@ -15,31 +15,23 @@ export const DIFFICULTY_PRESETS = {
     key: "easy",
     label: "Easy",
     allowedQuizModes: [QUIZ_MODES.WORD_TO_MEANING],
-    requireAllMeanings: false,
     minMeaningsToMatch: 1,
-    usePrimaryMeaningsOnly: false,
+    requireAllMeanings: false,
+    partialMatch: true,
     showPos: true,
     showTone: true,
-    showTags: true,
-    allowShowAnswer: true,
-    showAnswerPenaltyMistake: 0,
-    timeLimitSec: null,
-    partialMatch: true
+    showTags: true
   },
   normal: {
     key: "normal",
     label: "Normal",
     allowedQuizModes: [QUIZ_MODES.WORD_TO_MEANING, QUIZ_MODES.MEANING_TO_WORD],
-    requireAllMeanings: false,
     minMeaningsToMatch: 1,
-    usePrimaryMeaningsOnly: true,
+    requireAllMeanings: false,
+    partialMatch: false,
     showPos: true,
     showTone: true,
-    showTags: false,
-    allowShowAnswer: true,
-    showAnswerPenaltyMistake: 1,
-    timeLimitSec: 20,
-    partialMatch: false
+    showTags: false
   },
   hard: {
     key: "hard",
@@ -49,19 +41,15 @@ export const DIFFICULTY_PRESETS = {
       QUIZ_MODES.MEANING_TO_WORD,
       QUIZ_MODES.ALL_MEANINGS
     ],
-    requireAllMeanings: true,
     minMeaningsToMatch: null,
-    usePrimaryMeaningsOnly: false,
+    requireAllMeanings: true,
+    partialMatch: false,
     showPos: false,
     showTone: false,
-    showTags: false,
-    allowShowAnswer: false,
-    showAnswerPenaltyMistake: null,
-    timeLimitSec: 10,
-    partialMatch: false
+    showTags: false
   }
 };
 
-export function getDifficultyPreset(difficultyKey = "easy") {
-  return DIFFICULTY_PRESETS[difficultyKey] || DIFFICULTY_PRESETS.easy;
+export function getDifficultyPreset(key = "easy") {
+  return DIFFICULTY_PRESETS[key] || DIFFICULTY_PRESETS.easy;
 }
