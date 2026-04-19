@@ -40,7 +40,7 @@ export const citynoisewalkScenario = {
         "골목의 분위기, 사람들의 동선, 오래된 것과 새것이 섞인 방식을 읽으며 이 공간이 어떻게 사용되고 있는지 감지한다."
       ],
 
-      preferredTags: ["place", "object", "atmosphere", "daily"],
+      preferredTags: ["space", "object", "atmosphere", "daily"],
       preferredPos: ["noun", "adjective"],
 
       successTextPool: [
@@ -118,7 +118,7 @@ export const citynoisewalkScenario = {
         "먼저 발견한 메모의 방향, 높이, 재질을 기준으로 이 골목을 체계적으로 이동하며 흐름을 좇는다."
       ],
 
-      preferredTags: ["action", "movement", "relation", "daily"],
+      preferredTags: ["action", "change", "relation", "daily"],
       preferredPos: ["verb", "noun"],
 
       successTextPool: [
