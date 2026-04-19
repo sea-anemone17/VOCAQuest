@@ -1,6 +1,6 @@
 import { generateId, nowISO, normalizeText, uniqueArray } from "./utils.js";
 
-export const STORAGE_KEY = "vocaquest_data";
+export const STORAGE_KEY = "word_trpg_data";
 export const CURRENT_SCHEMA_VERSION = 2;
 
 let memoryCache = null;
