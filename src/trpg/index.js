@@ -1,38 +1,224 @@
-import { initData, getData } from "../storage.js";
+import { initData, getData, getWordById } from "../storage.js";
 import { scenarios } from "../../scenarios/index.js";
+import { getPosLabel, getToneLabel, getTagLabel } from "../tags.js";
+import { getDifficultyPreset } from "./trpgConfig.js";
+import { judgeByQuizMode } from "./trpgJudge.js";
+import {
+  getTrpgElements,
+  renderStats,
+  renderIntro,
+  renderScene,
+  renderWordEvent,
+  renderJudgeResult,
+  renderChoicePool,
+  hideWordEvent,
+  clearWordUi,
+  renderEnding
+} from "./trpgRender.js";
 
 let gameState = null;
+let pendingJudgeResult = null;
 
-function getElements() {
+function getScenarioById(scenarioId) {
+  return scenarios.find((scenario) => scenario.id === scenarioId) || null;
+}
+
+function createGameState({ bookId, sectionId, scenarioId, difficulty }) {
   return {
-    bookSelect: document.getElementById("trpgBookSelect"),
-    sectionSelect: document.getElementById("trpgSectionSelect"),
-    scenarioSelect: document.getElementById("scenarioSelect"),
-    difficultySelect: document.getElementById("difficultySelect"),
-    startBtn: document.getElementById("startScenarioBtn"),
-    restartBtn: document.getElementById("restartScenarioBtn"),
+    bookId,
+    sectionId,
+    scenarioId,
+    difficulty,
 
-    sceneCounter: document.getElementById("sceneCounter"),
-    clueCount: document.getElementById("clueCount"),
-    mistakeCount: document.getElementById("mistakeCount"),
-    scenarioStatus: document.getElementById("scenarioStatus"),
+    sceneIndex: 0,
+    clues: 0,
+    mistakes: 0,
+    ended: false,
 
-    scenarioTitle: document.getElementById("scenarioTitle"),
-    scenarioIntroBox: document.getElementById("scenarioIntroBox"),
-    sceneBox: document.getElementById("sceneBox")
+    currentActionId: null,
+    currentWordId: null,
+    currentQuizMode: null,
+    currentPromptText: "",
+    currentChoicePool: [],
+    resolvedThisTurn: false
   };
+}
+
+function getWordsForCurrentSection() {
+  const data = getData();
+  return (data.words || []).filter((word) => word.sectionId === gameState.sectionId);
+}
+
+function pickRandom(array) {
+  if (!Array.isArray(array) || array.length === 0) return null;
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function chooseQuizMode(preset) {
+  return pickRandom(preset.allowedQuizModes);
+}
+
+function buildPromptText(word, quizMode) {
+  if (!word) return "";
+
+  if (quizMode === "meaningToWord") {
+    return (word.meanings || []).slice(0, 2).join(" / ");
+  }
+
+  return word.word;
+}
+
+function renderAll(els) {
+  const scenario = getScenarioById(gameState?.scenarioId);
+  const word = gameState?.currentWordId ? getWordById(gameState.currentWordId) : null;
+
+  renderStats({ els, gameState, scenario });
+  renderIntro({ els, scenario });
+  renderScene({ els, scenario, gameState });
+  renderWordEvent({
+    els,
+    gameState,
+    word,
+    getPosLabel,
+    getToneLabel,
+    getTagLabel
+  });
+  renderChoicePool({ els, gameState });
+  renderEnding({ els, gameState });
+}
+
+function startScenario(els) {
+  const bookId = els.bookSelect?.value || "";
+  const sectionId = els.sectionSelect?.value || "";
+  const scenarioId = els.scenarioSelect?.value || "";
+  const difficulty = els.difficultySelect?.value || "easy";
+
+  if (!bookId || !sectionId || !scenarioId) {
+    alert("책, 섹션, 시나리오를 모두 선택해 주세요.");
+    return;
+  }
+
+  gameState = createGameState({
+    bookId,
+    sectionId,
+    scenarioId,
+    difficulty
+  });
+
+  pendingJudgeResult = null;
+  clearWordUi(els);
+  hideWordEvent(els);
+  renderAll(els);
+}
+
+function startWordEvent(actionId, els) {
+  if (!gameState || gameState.ended) return;
+
+  const words = getWordsForCurrentSection();
+  const word = pickRandom(words);
+
+  if (!word) {
+    alert("현재 섹션에 단어가 없습니다.");
+    return;
+  }
+
+  const preset = getDifficultyPreset(gameState.difficulty);
+  const quizMode = chooseQuizMode(preset);
+
+  gameState.currentActionId = actionId;
+  gameState.currentWordId = word.id;
+  gameState.currentQuizMode = quizMode;
+  gameState.currentPromptText = buildPromptText(word, quizMode);
+  gameState.currentChoicePool = [];
+  gameState.resolvedThisTurn = false;
+
+  pendingJudgeResult = null;
+  clearWordUi(els);
+  renderAll(els);
+}
+
+function submitWordAnswer(els) {
+  if (!gameState?.currentWordId || gameState.resolvedThisTurn) return;
+
+  const word = getWordById(gameState.currentWordId);
+  if (!word) return;
+
+  const userAnswer = els.trpgAnswerInput?.value?.trim() || "";
+  const preset = getDifficultyPreset(gameState.difficulty);
+
+  const judgeResult = judgeByQuizMode({
+    quizMode: gameState.currentQuizMode,
+    userAnswer,
+    word,
+    preset
+  });
+
+  pendingJudgeResult = judgeResult;
+  renderJudgeResult({ els, judgeResult });
+}
+
+function finalizeWordAnswer(isCorrect, els) {
+  if (!gameState || !gameState.currentWordId) return;
+
+  if (isCorrect) {
+    gameState.clues += 1;
+  } else {
+    gameState.mistakes += 1;
+  }
+
+  gameState.currentChoicePool = [
+    {
+      id: "next-scene",
+      label: "다음 장면으로 이동한다"
+    },
+    {
+      id: "retry-scene",
+      label: "다시 행동을 고른다"
+    }
+  ];
+
+  gameState.resolvedThisTurn = true;
+
+  if (els.trpgJudgeConfirmBox) {
+    els.trpgJudgeConfirmBox.classList.add("hidden");
+  }
+
+  renderAll(els);
+}
+
+function finishChoice(choiceId, els) {
+  if (!gameState?.resolvedThisTurn) return;
+
+  if (choiceId === "next-scene") {
+    gameState.sceneIndex += 1;
+  }
+
+  const scenario = getScenarioById(gameState.scenarioId);
+  const maxTurns = scenario?.loopConfig?.maxTurns ?? 3;
+
+  if (gameState.sceneIndex >= maxTurns) {
+    gameState.ended = true;
+  }
+
+  gameState.currentActionId = null;
+  gameState.currentWordId = null;
+  gameState.currentQuizMode = null;
+  gameState.currentPromptText = "";
+  gameState.currentChoicePool = [];
+  gameState.resolvedThisTurn = false;
+
+  pendingJudgeResult = null;
+  clearWordUi(els);
+  hideWordEvent(els);
+  renderAll(els);
 }
 
 function renderBooks(bookSelect, data) {
   bookSelect.innerHTML = "";
-
   const books = data.books || [];
 
-  if (books.length === 0) {
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "책 없음";
-    bookSelect.appendChild(opt);
+  if (!books.length) {
+    bookSelect.innerHTML = `<option value="">책 없음</option>`;
     return;
   }
 
@@ -51,11 +237,8 @@ function renderSections(sectionSelect, data, bookId) {
     .filter((section) => section.bookId === bookId)
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  if (sections.length === 0) {
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "섹션 없음";
-    sectionSelect.appendChild(opt);
+  if (!sections.length) {
+    sectionSelect.innerHTML = `<option value="">섹션 없음</option>`;
     return;
   }
 
@@ -68,8 +251,6 @@ function renderSections(sectionSelect, data, bookId) {
 }
 
 function renderScenarios(scenarioSelect) {
-  if (!scenarioSelect) return;
-
   scenarioSelect.innerHTML = "";
 
   scenarios.forEach((scenario) => {
@@ -81,8 +262,6 @@ function renderScenarios(scenarioSelect) {
 }
 
 function renderDifficulties(difficultySelect) {
-  if (!difficultySelect) return;
-
   difficultySelect.innerHTML = `
     <option value="easy">Easy</option>
     <option value="normal">Normal</option>
@@ -90,209 +269,53 @@ function renderDifficulties(difficultySelect) {
   `;
 }
 
-function getScenarioById(scenarioId) {
-  return scenarios.find((scenario) => scenario.id === scenarioId) || null;
-}
-
-function createGameState({ bookId, sectionId, scenarioId, difficulty }) {
-  return {
-    bookId,
-    sectionId,
-    scenarioId,
-    difficulty,
-    sceneIndex: 0,
-    clues: 0,
-    mistakes: 0,
-    ended: false
-  };
-}
-
-function updateStats(els) {
-  if (!gameState) return;
-
-  const scenario = getScenarioById(gameState.scenarioId);
-  const maxTurns = scenario?.loopConfig?.maxTurns ?? 0;
-
-  if (els.sceneCounter) {
-    els.sceneCounter.textContent = `${gameState.sceneIndex + 1} / ${maxTurns}`;
-  }
-
-  if (els.clueCount) {
-    els.clueCount.textContent = String(gameState.clues);
-  }
-
-  if (els.mistakeCount) {
-    els.mistakeCount.textContent = String(gameState.mistakes);
-  }
-
-  if (els.scenarioStatus) {
-    els.scenarioStatus.textContent = gameState.ended ? "종결" : "진행 중";
-  }
-}
-
-function renderIntro(els) {
-  if (!gameState) return;
-
-  const scenario = getScenarioById(gameState.scenarioId);
-  if (!scenario) return;
-
-  if (els.scenarioTitle) {
-    els.scenarioTitle.textContent = scenario.title;
-  }
-
-  if (els.scenarioIntroBox) {
-    els.scenarioIntroBox.innerHTML = `<p>${scenario.intro}</p>`;
-  }
-}
-
-function renderActionMenu(els) {
-  if (!gameState) return;
-
-  const scenario = getScenarioById(gameState.scenarioId);
-  if (!scenario || !els.sceneBox) return;
-
-  const buttonsHtml = (scenario.actionTypes || [])
-    .map(
-      (action) => `
-        <button class="button" type="button" data-action-id="${action.id}">
-          ${action.label}
-        </button>
-      `
-    )
-    .join("");
-
-  els.sceneBox.innerHTML = `
-    <h3>첫 장면</h3>
-    <p>어떤 방식으로 조사할지 선택하세요.</p>
-    <div class="button-row">${buttonsHtml}</div>
-  `;
-}
-
-function startScenario(els) {
-  const bookId = els.bookSelect?.value || "";
-  const sectionId = els.sectionSelect?.value || "";
-  const scenarioId = els.scenarioSelect?.value || "";
-  const difficulty = els.difficultySelect?.value || "easy";
-
-  if (!bookId || !sectionId || !scenarioId) {
-    alert("책, 섹션, 시나리오를 모두 선택해 주세요.");
-    return;
-  }
-
-  const scenario = getScenarioById(scenarioId);
-  if (!scenario) {
-    alert("시나리오를 찾을 수 없습니다.");
-    return;
-  }
-
-  gameState = createGameState({
-    bookId,
-    sectionId,
-    scenarioId,
-    difficulty
-  });
-
-  updateStats(els);
-  renderIntro(els);
-  renderActionMenu(els);
-}
-
-function handleActionClick(event, els) {
-  const button = event.target.closest("button[data-action-id]");
-  if (!button || !gameState) return;
-
-  const actionId = button.dataset.actionId;
-  const scenario = getScenarioById(gameState.scenarioId);
-  const action = scenario?.actionTypes?.find((item) => item.id === actionId);
-
-  if (!action || !els.sceneBox) return;
-
-  els.sceneBox.innerHTML = `
-    <h3>${action.label}</h3>
-    <p>${action.description || "조사를 진행합니다."}</p>
-    <div class="button-row">
-      <button class="button primary" type="button" id="nextSceneBtn">다음 장면으로</button>
-      <button class="button" type="button" id="backToActionsBtn">다시 행동 선택</button>
-    </div>
-  `;
-
-  const nextBtn = document.getElementById("nextSceneBtn");
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      goToNextScene(els);
-    });
-  }
-
-  const backBtn = document.getElementById("backToActionsBtn");
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      renderActionMenu(els);
-    });
-  }
-}
-
-function goToNextScene(els) {
-  if (!gameState) return;
-
-  const scenario = getScenarioById(gameState.scenarioId);
-  const maxTurns = scenario?.loopConfig?.maxTurns ?? 0;
-
-  gameState.sceneIndex += 1;
-
-  if (gameState.sceneIndex >= maxTurns) {
-    gameState.ended = true;
-
-    updateStats(els);
-
-    if (els.sceneBox) {
-      els.sceneBox.innerHTML = `
-        <h3>조사 종료</h3>
-        <p>더 이상 진행할 장면이 없습니다.</p>
-      `;
-    }
-
-    return;
-  }
-
-  updateStats(els);
-  renderActionMenu(els);
-}
-
 async function init() {
   await initData();
 
-  const els = getElements();
+  const els = getTrpgElements();
   const data = getData();
-
-  if (!els.bookSelect || !els.sectionSelect || !els.sceneBox) {
-    alert("필수 요소를 찾을 수 없습니다.");
-    return;
-  }
 
   renderBooks(els.bookSelect, data);
   renderSections(els.sectionSelect, data, els.bookSelect.value);
   renderScenarios(els.scenarioSelect);
   renderDifficulties(els.difficultySelect);
 
-  els.bookSelect.addEventListener("change", () => {
+  els.bookSelect?.addEventListener("change", () => {
     renderSections(els.sectionSelect, data, els.bookSelect.value);
   });
 
-  if (els.startBtn) {
-    els.startBtn.addEventListener("click", () => {
-      startScenario(els);
-    });
-  }
+  els.startBtn?.addEventListener("click", () => {
+    startScenario(els);
+  });
 
-  if (els.restartBtn) {
-    els.restartBtn.addEventListener("click", () => {
-      if (!gameState) return;
-      startScenario(els);
-    });
-  }
+  els.restartBtn?.addEventListener("click", () => {
+    if (!gameState) return;
+    startScenario(els);
+  });
 
-  els.sceneBox.addEventListener("click", (event) => {
-    handleActionClick(event, els);
+  els.sceneBox?.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-action-id]");
+    if (!button || !gameState) return;
+    startWordEvent(button.dataset.actionId, els);
+  });
+
+  document.getElementById("trpgAnswerForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitWordAnswer(els);
+  });
+
+  document.getElementById("trpgConfirmCorrectBtn")?.addEventListener("click", () => {
+    finalizeWordAnswer(true, els);
+  });
+
+  document.getElementById("trpgConfirmWrongBtn")?.addEventListener("click", () => {
+    finalizeWordAnswer(false, els);
+  });
+
+  els.choiceButtons?.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-choice-id]");
+    if (!button) return;
+    finishChoice(button.dataset.choiceId, els);
   });
 }
 
