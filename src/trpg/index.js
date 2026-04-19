@@ -1,4 +1,4 @@
-import { initData, getData } from "../storage.js";
+import { getData } from "../storage.js";
 import { scenarios } from "../scenarios/index.js";
 import { getPosLabel, getToneLabel, getTagLabel } from "../tags.js";
 
@@ -162,7 +162,7 @@ function finalizeInterpretation(finalCorrect) {
       gameState.journal.push(extra);
     }
 
-    applyEffects(actionType.effects?.success ? gameState : gameState, actionType.effects?.success || {
+    applyEffects(gameState, actionType.effects?.success || {
       clue: 1,
       routeBias: actionType.id
     });
@@ -176,7 +176,7 @@ function finalizeInterpretation(finalCorrect) {
       gameState.journal.push(extra);
     }
 
-    applyEffects(actionType.effects?.failure ? gameState : gameState, actionType.effects?.failure || {
+    applyEffects(gameState, actionType.effects?.failure || {
       mistake: 1,
       routeBias: actionType.id
     });
@@ -239,15 +239,11 @@ function attachEvents() {
   }
 
   if (els.startScenarioBtn) {
-    els.startScenarioBtn.addEventListener("click", () => {
-      startScenario();
-    });
+    els.startScenarioBtn.addEventListener("click", startScenario);
   }
 
   if (els.restartScenarioBtn) {
-    els.restartScenarioBtn.addEventListener("click", () => {
-      startScenario();
-    });
+    els.restartScenarioBtn.addEventListener("click", startScenario);
   }
 
   if (els.sceneBox) {
@@ -265,6 +261,7 @@ function attachEvents() {
   if (els.trpgAnswerForm) {
     els.trpgAnswerForm.addEventListener("submit", (event) => {
       event.preventDefault();
+
       if (!gameState.currentWord || pendingSubmission || gameState.resolvedThisTurn || gameState.ended) {
         return;
       }
@@ -290,15 +287,11 @@ function attachEvents() {
   }
 
   if (els.trpgConfirmCorrectBtn) {
-    els.trpgConfirmCorrectBtn.addEventListener("click", () => {
-      finalizeInterpretation(true);
-    });
+    els.trpgConfirmCorrectBtn.addEventListener("click", () => finalizeInterpretation(true));
   }
 
   if (els.trpgConfirmWrongBtn) {
-    els.trpgConfirmWrongBtn.addEventListener("click", () => {
-      finalizeInterpretation(false);
-    });
+    els.trpgConfirmWrongBtn.addEventListener("click", () => finalizeInterpretation(false));
   }
 
   if (els.choiceButtons) {
@@ -314,12 +307,9 @@ function attachEvents() {
   }
 }
 
-async function main() {
-  await initData();
+export async function initTrpgApp() {
   els = getTrpgElements();
   gameState = createInitialGameState();
   render();
   attachEvents();
 }
-
-main();
