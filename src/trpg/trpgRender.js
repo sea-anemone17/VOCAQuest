@@ -1,15 +1,35 @@
 export function renderChoicePool({ els, gameState }) {
-
-  alert("renderChoicePool 실행됨");
-
   if (!els.sceneChoiceBox || !els.choiceButtons) return;
 
-  alert(JSON.stringify({
-  action: !!gameState.currentActionType,
-  resolved: gameState.resolvedThisTurn,
-  ended: gameState.ended,
-  choiceLen: (gameState.currentChoicePool || []).length
-}));
+  const debugText = `
+    actionType: ${!!gameState.currentActionType}
+    resolved: ${gameState.resolvedThisTurn}
+    ended: ${gameState.ended}
+    choiceLen: ${(gameState.currentChoicePool || []).length}
+  `;
+
+  if (els.journalBox) {
+    els.journalBox.innerHTML = `<pre style="color:red; white-space:pre-wrap;">${escapeHtml(debugText)}</pre>` + els.journalBox.innerHTML;
+  }
+
+  if (!gameState.currentActionType || !gameState.resolvedThisTurn || gameState.ended) {
+    els.sceneChoiceBox.classList.add("hidden");
+    els.choiceButtons.innerHTML = "";
+    return;
+  }
+
+  els.sceneChoiceBox.classList.remove("hidden");
+
+  els.choiceButtons.innerHTML = (gameState.currentChoicePool || [])
+    .map(
+      (choice) => `
+        <button class="button" data-choice-id="${choice.id}" type="button">
+          ${escapeHtml(choice.label)}
+        </button>
+      `
+    )
+    .join("");
+}
 
 
 import { escapeHtml } from "../utils.js";
