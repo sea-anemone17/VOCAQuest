@@ -1,5 +1,3 @@
-throw new Error("ROOT TRPG JS TEST ERROR");
-
 import { initData, getData } from "./storage.js";
 import { scenarios } from "./scenarios/index.js";
 import { getPosLabel, getToneLabel, getTagLabel } from "./tags.js";
