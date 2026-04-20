@@ -1,0 +1,59 @@
+{
+  "books": [
+    {
+      "id": "book_sample_1",
+      "title": "워드마스터 수능 2000",
+      "createdAt": "2026-04-16T00:00:00.000Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "section_sample_1",
+      "bookId": "book_sample_1",
+      "title": "Day 1",
+      "order": 1
+    }
+  ],
+  "words": [
+    {
+      "id": "word_sample_1",
+      "bookId": "book_sample_1",
+      "sectionId": "section_sample_1",
+      "word": "abandon",
+      "meaning": "버리다, 포기하다",
+      "pos": "verb",
+      "tone": "negative",
+      "tags": ["change"],
+      "example": "He had to abandon the plan.",
+      "memo": "",
+      "createdAt": "2026-04-16T00:00:00.000Z"
+    },
+    {
+      "id": "word_sample_2",
+      "bookId": "book_sample_1",
+      "sectionId": "section_sample_1",
+      "word": "calm",
+      "meaning": "평온한, 침착한",
+      "pos": "adjective",
+      "tone": "positive",
+      "tags": ["feeling"],
+      "example": "She remained calm under pressure.",
+      "memo": "",
+      "createdAt": "2026-04-16T00:00:00.000Z"
+    },
+    {
+      "id": "word_sample_3",
+      "bookId": "book_sample_1",
+      "sectionId": "section_sample_1",
+      "word": "corridor",
+      "meaning": "복도",
+      "pos": "noun",
+      "tone": "neutral",
+      "tags": ["place"],
+      "example": "A long corridor stretched before him.",
+      "memo": "",
+      "createdAt": "2026-04-16T00:00:00.000Z"
+    }
+  ],
+  "studyRecords": []
+}
