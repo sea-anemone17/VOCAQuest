@@ -3,109 +3,57 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Word TRPG - Archive</title>
+  <title>VOCA Quest - Archive</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <h1>🗂️ 단어 아카이브</h1>
-        <p class="subtitle">책 · 섹션 · 단어를 관리합니다.</p>
+        <h1>🗂️ Archive</h1>
+        <p class="subtitle">책 → 섹션 → 단어 순서로 구조를 정리합니다.</p>
       </div>
       <div class="button-row">
         <a class="button" href="./index.html">홈</a>
-        <a class="button" href="./study.html">학습</a>
+        <a class="button" href="./study.html">일반 학습</a>
+        <a class="button" href="./trpg.html">TRPG</a>
       </div>
     </header>
 
-    <main class="archive-layout">
-      <section class="card panel">
-        <div class="panel-header">
+    <section id="auth-guard" class="card hidden">로그인이 필요합니다. 홈으로 이동해 로그인해 주세요.</section>
+
+    <main id="archive-app" class="route-grid hidden">
+      <aside class="list-pane">
+        <section class="card">
           <h2>책</h2>
-        </div>
+          <div class="form-block">
+            <input id="bookTitleInput" type="text" placeholder="새 책 제목" />
+            <button id="addBookBtn" class="button primary" type="button">책 추가</button>
+          </div>
+          <div id="bookList" class="list-box" style="margin-top:12px;"></div>
+        </section>
 
-        <form id="bookForm" class="form-block">
-          <label class="input-group">
-            <span>책 이름</span>
-            <input type="text" id="bookTitleInput" placeholder="예: 워드마스터 수능 2000" required />
-          </label>
-          <button class="button primary" type="submit">책 추가</button>
-        </form>
-
-        <div id="bookList" class="list-box"></div>
-      </section>
-
-      <section class="card panel">
-        <div class="panel-header">
+        <section class="card">
           <h2>섹션</h2>
-          <p id="selectedBookInfo" class="muted">책을 선택하세요.</p>
-        </div>
-
-        <form id="sectionForm" class="form-block">
-          <label class="input-group">
-            <span>섹션 이름</span>
-            <input type="text" id="sectionTitleInput" placeholder="예: Day 1" required />
-          </label>
-          <button class="button primary" type="submit">섹션 추가</button>
-        </form>
-
-        <div id="sectionList" class="list-box"></div>
-      </section>
-
-      <section class="card panel">
-        <div class="panel-header">
-          <h2>단어</h2>
-          <p id="selectedSectionInfo" class="muted">섹션을 선택하세요.</p>
-        </div>
-
-        <div class="data-manage-card">
-          <h3>데이터 관리</h3>
-          <div id="storageSummaryBox" class="storage-summary"></div>
-          <div class="button-row">
-            <button id="exportBackupBtn" class="button" type="button">백업 다운로드</button>
+          <div id="selectedBookInfo" class="muted small-note">책을 선택하세요.</div>
+          <div class="form-block" style="margin-top:10px;">
+            <input id="sectionTitleInput" type="text" placeholder="새 섹션 제목" />
+            <button id="addSectionBtn" class="button primary" type="button">섹션 추가</button>
           </div>
-          <div class="form-block import-block">
-            <label class="input-group">
-              <span>백업 파일 불러오기 (.json)</span>
-              <input id="importBackupInput" type="file" accept=".json,application/json" />
-            </label>
-            <button id="importBackupBtn" class="button" type="button">백업 불러오기</button>
-          </div>
-          <p class="muted small-note">
-            불러오기는 현재 데이터를 덮어쓸 수 있습니다. 중요한 데이터는 먼저 백업해 주세요.
-          </p>
-        </div>
+          <div id="sectionList" class="list-box" style="margin-top:12px;"></div>
+        </section>
+      </aside>
 
-        <div class="filter-bar">
+      <section class="card">
+        <h2>단어</h2>
+        <div id="selectedSectionInfo" class="muted small-note">섹션을 선택하세요.</div>
+        <div class="grid-2" style="margin-top:12px;">
           <label class="input-group">
             <span>검색</span>
-            <input type="text" id="wordSearchInput" placeholder="단어 / 뜻 / 예문 / 메모 검색" />
+            <input id="wordSearchInput" type="text" placeholder="단어/뜻/예문/메모" />
           </label>
-
           <label class="input-group">
-            <span>품사 필터</span>
-            <select id="wordFilterPos">
-              <option value="">전체</option>
-            </select>
-          </label>
-
-          <label class="input-group">
-            <span>정서값 필터</span>
-            <select id="wordFilterTone">
-              <option value="">전체</option>
-            </select>
-          </label>
-
-          <label class="input-group">
-            <span>태그 필터</span>
-            <select id="wordFilterTag">
-              <option value="">전체</option>
-            </select>
-          </label>
-
-          <label class="input-group">
-            <span>즐겨찾기 필터</span>
+            <span>필터</span>
             <select id="wordFilterFavorite">
               <option value="">전체</option>
               <option value="favorite">즐겨찾기만</option>
@@ -113,60 +61,28 @@
           </label>
         </div>
 
-        <form id="wordForm" class="form-block word-form">
-          <input type="hidden" id="editingWordId" value="" />
-
-          <label class="input-group">
-            <span>단어</span>
-            <input type="text" id="wordInput" placeholder="예: abandon" required />
-          </label>
-
-          <label class="input-group">
-            <span>뜻 (한 줄에 하나씩)</span>
-            <textarea id="meaningsInput" rows="4" placeholder="버리다&#10;포기하다" required></textarea>
-          </label>
-
-          <label class="input-group">
-            <span>품사</span>
-            <select id="posSelect"></select>
-          </label>
-
-          <label class="input-group">
-            <span>정서값</span>
-            <select id="toneSelect"></select>
-          </label>
-
-          <div class="input-group">
-            <span>세부 태그 (복수 선택)</span>
-            <div id="tagCheckboxGroup" class="checkbox-group"></div>
+        <form id="wordForm" class="form-block" style="margin-top:16px;">
+          <div class="grid-2">
+            <label class="input-group"><span>단어</span><input id="wordInput" type="text" required /></label>
+            <label class="input-group"><span>품사</span><select id="posSelect"></select></label>
           </div>
-
-          <label class="check-row">
-            <input type="checkbox" id="favoriteInput" />
-            <span>즐겨찾기</span>
-          </label>
-
-          <label class="input-group">
-            <span>예문</span>
-            <textarea id="exampleInput" rows="3" placeholder="예문을 넣어도 좋고, 비워도 됩니다."></textarea>
-          </label>
-
-          <label class="input-group">
-            <span>메모</span>
-            <textarea id="memoInput" rows="3" placeholder="추가 메모"></textarea>
-          </label>
-
+          <div class="grid-2">
+            <label class="input-group"><span>정서</span><select id="toneSelect"></select></label>
+            <label class="input-group"><span>태그</span><select id="tagSelect"></select></label>
+          </div>
+          <label class="input-group"><span>뜻 (줄바꿈으로 구분)</span><textarea id="meaningsInput"></textarea></label>
+          <label class="input-group"><span>예문</span><input id="exampleInput" type="text" /></label>
+          <label class="input-group"><span>메모</span><textarea id="memoInput"></textarea></label>
           <div class="button-row">
-            <button class="button primary" id="wordSubmitBtn" type="submit">단어 추가</button>
-            <button class="button" id="cancelEditBtn" type="button">수정 취소</button>
+            <button id="saveWordBtn" class="button primary" type="submit">저장</button>
+            <button id="cancelEditBtn" class="button hidden" type="button">수정 취소</button>
           </div>
         </form>
 
-        <div id="wordList" class="list-box"></div>
+        <div id="wordList" class="list-box" style="margin-top:18px;"></div>
       </section>
     </main>
   </div>
-
-  <script type="module" src="./archive.js"></script>
+  <script type="module" src="./src/pages/archive.js"></script>
 </body>
 </html>

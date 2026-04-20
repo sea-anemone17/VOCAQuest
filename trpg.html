@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VOCA Quest - Scenario</title>
+  <title>VOCA Quest - TRPG</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <h1>🕯️ Word story</h1>
-        <p class="subtitle">단어를 단서로 해석하는 조사형 프로토타입</p>
+        <h1>🕯️ Word Story</h1>
+        <p class="subtitle">시나리오를 따라가며 단어를 해석하고 단서를 모읍니다.</p>
       </div>
       <div class="button-row">
         <a class="button" href="./index.html">홈</a>
@@ -20,115 +20,57 @@
       </div>
     </header>
 
-    <main class="trpg-layout">
+    <section id="trpg-auth-guard" class="card hidden">로그인이 필요합니다. 홈으로 이동해 로그인해 주세요.</section>
+
+    <main id="trpg-app" class="grid-2 hidden">
       <section class="card">
         <h2>시작 설정</h2>
-
         <div class="form-block">
-          <label class="input-group">
-            <span>책 선택</span>
-            <select id="trpgBookSelect"></select>
-          </label>
-
-          <label class="input-group">
-            <span>섹션 선택</span>
-            <select id="trpgSectionSelect"></select>
-          </label>
-
-          <label class="input-group">
-            <span>시나리오 선택</span>
-            <select id="scenarioSelect"></select>
-          </label>
-
-          <label class="input-group">
-            <span>난이도 선택</span>
-            <select id="difficultySelect"></select>
-          </label>
-
+          <label class="input-group"><span>책</span><select id="trpgBookSelect"></select></label>
+          <label class="input-group"><span>섹션</span><select id="trpgSectionSelect"></select></label>
+          <label class="input-group"><span>시나리오</span><select id="scenarioSelect"></select></label>
           <div class="button-row">
-            <button id="startScenarioBtn" class="button primary" type="button">시나리오 시작</button>
+            <button id="startScenarioBtn" class="button primary" type="button">시작</button>
             <button id="restartScenarioBtn" class="button" type="button">다시 시작</button>
           </div>
         </div>
-
-        <div class="stats-box">
-          <div class="stat-item">
-            <span class="stat-label">현재 장면</span>
-            <strong id="sceneCounter">0 / 0</strong>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">단서 수</span>
-            <strong id="clueCount">0</strong>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">오해 수</span>
-            <strong id="mistakeCount">0</strong>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">상태</span>
-            <strong id="scenarioStatus">대기 중</strong>
-          </div>
+        <div class="stats-box" style="margin-top:16px;">
+          <div class="stat-item"><span class="stat-label">장면</span><strong id="sceneCounter">0 / 0</strong></div>
+          <div class="stat-item"><span class="stat-label">단서</span><strong id="clueCount">0</strong></div>
+          <div class="stat-item"><span class="stat-label">오해</span><strong id="mistakeCount">0</strong></div>
+          <div class="stat-item"><span class="stat-label">상태</span><strong id="scenarioStatus">대기 중</strong></div>
         </div>
       </section>
 
       <section class="card">
         <h2 id="scenarioTitle">시나리오</h2>
-        <div id="scenarioIntroBox" class="study-card">
-          <p class="muted">시나리오를 시작해 주세요.</p>
-        </div>
-
-        <div id="sceneBox" class="study-card">
-          <p class="muted">장면이 아직 시작되지 않았습니다.</p>
-        </div>
-
+        <div id="scenarioIntroBox" class="study-card"><p class="muted">시작 버튼을 눌러 주세요.</p></div>
+        <div id="sceneBox" class="study-card"><p class="muted">장면이 아직 없습니다.</p></div>
         <div id="wordEventBox" class="study-card hidden">
-          <div class="study-sub">현재 단서 단어</div>
+          <div class="muted">현재 단서</div>
           <div id="trpgWordText" class="study-word">-</div>
-          <div id="trpgWordMeta" class="study-sub">-</div>
-          <div id="trpgQuizModeText" class="study-sub"></div>
-          <div id="trpgTimerText" class="study-sub"></div>
-
+          <div id="trpgWordMeta" class="muted"></div>
           <form id="trpgAnswerForm" class="form-block">
-            <label class="input-group">
-              <span>뜻 입력</span>
-              <input type="text" id="trpgAnswerInput" placeholder="뜻을 입력하세요" />
-            </label>
-
+            <input id="trpgAnswerInput" type="text" placeholder="뜻을 입력하세요" autocomplete="off" />
             <div class="button-row">
-              <button class="button primary" type="submit">해석 시도</button>
+              <button class="button primary" type="submit">제출</button>
               <button id="trpgShowAnswerBtn" class="button" type="button">정답 보기</button>
             </div>
           </form>
-
           <div id="trpgResultBox" class="result-box"></div>
-
-          <div id="trpgJudgeConfirmBox" class="judge-confirm-box hidden">
-            <div id="trpgJudgeHintText" class="judge-hint-text"></div>
-            <div class="button-row">
-              <button id="trpgConfirmCorrectBtn" class="button primary" type="button">정답으로 확정</button>
-              <button id="trpgConfirmWrongBtn" class="button inline-danger" type="button">오답으로 확정</button>
-            </div>
-          </div>
         </div>
-
-        <div id="sceneChoiceBox" class="study-card hidden">
-          <h3>선택</h3>
-          <div id="choiceButtons" class="button-row"></div>
-        </div>
-
         <div id="endingBox" class="study-card hidden">
           <h3>결과</h3>
           <div id="endingText"></div>
         </div>
       </section>
 
-      <section class="card">
-        <h2>조사 기록</h2>
+      <section class="card" style="grid-column:1 / -1;">
+        <h2>기록</h2>
         <div id="journalBox" class="log-box"></div>
       </section>
     </main>
   </div>
-
-  <script type="module" src="./src/trpg/index.js"></script>
+  <script type="module" src="./src/pages/trpg.js"></script>
 </body>
 </html>

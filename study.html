@@ -3,129 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Word TRPG - Study</title>
+  <title>VOCA Quest - Study</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <h1>🎲 학습 플레이</h1>
-        <p class="subtitle">랜덤 출제로 단어를 회상합니다.</p>
+        <h1>🧠 Study</h1>
+        <p class="subtitle">일반 학습, 오답 복습, 즐겨찾기 복습을 한 화면에서 처리합니다.</p>
       </div>
       <div class="button-row">
         <a class="button" href="./index.html">홈</a>
         <a class="button" href="./archive.html">아카이브</a>
+        <a class="button" href="./trpg.html">TRPG</a>
       </div>
     </header>
 
-    <main class="study-layout">
+    <section id="study-auth-guard" class="card hidden">로그인이 필요합니다. 홈으로 이동해 로그인해 주세요.</section>
+
+    <main id="study-app" class="grid-2 hidden">
       <section class="card">
-        <h2>학습 설정</h2>
-
+        <h2>시작 설정</h2>
         <div class="form-block">
-          <label class="input-group">
-            <span>책 선택</span>
-            <select id="studyBookSelect"></select>
+          <label class="input-group"><span>책</span><select id="studyBookSelect"></select></label>
+          <label class="input-group"><span>섹션</span><select id="studySectionSelect"></select></label>
+          <label class="input-group"><span>방향</span>
+            <select id="studyDirectionSelect">
+              <option value="word-to-meaning">단어 → 뜻</option>
+              <option value="meaning-to-word">뜻 → 단어</option>
+            </select>
           </label>
-
-          <label class="input-group">
-            <span>섹션 선택</span>
-            <select id="studySectionSelect"></select>
-          </label>
-
-          <label for="studyDirectionSelect">출제 방향</label>
-           <select id="studyDirectionSelect">
-           <option value="word-to-meaning">단어 → 뜻</option>
-           <option value="meaning-to-word">뜻 → 단어</option>
-          </select>
-
           <div class="button-row">
-            <button id="startStudyBtn" class="button primary" type="button">학습 시작</button>
-            <button id="retryWrongBtn" class="button" type="button">오답만 다시</button>
-            <button id="favoriteStudyBtn" class="button" type="button">즐겨찾기만 학습</button>
+            <button id="startStudyBtn" class="button primary" type="button">전체 학습</button>
+            <button id="retryWrongBtn" class="button" type="button">오답만</button>
+            <button id="favoriteStudyBtn" class="button" type="button">즐겨찾기만</button>
             <button id="shuffleStudyBtn" class="button" type="button">다시 섞기</button>
           </div>
         </div>
 
-        <div class="stats-box study-stats">
-          <div class="stat-item">
-            <span class="stat-label">전체 시도</span>
-            <strong id="totalAttempts">0</strong>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">정답 수</span>
-            <strong id="correctAttempts">0</strong>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">오답 수</span>
-            <strong id="wrongAttempts">0</strong>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">정답률</span>
-            <strong id="accuracyRate">0%</strong>
-          </div>
+        <div class="stats-box" style="margin-top:16px;">
+          <div class="stat-item"><span class="stat-label">총 시도</span><strong id="totalAttempts">0</strong></div>
+          <div class="stat-item"><span class="stat-label">정답</span><strong id="correctAttempts">0</strong></div>
+          <div class="stat-item"><span class="stat-label">오답</span><strong id="wrongAttempts">0</strong></div>
+          <div class="stat-item"><span class="stat-label">정확도</span><strong id="accuracyRate">0%</strong></div>
         </div>
-
-        <div class="section-difficulty-box">
-          <span class="stat-label">섹션 난이도</span>
-          <strong id="sectionDifficultyBadge" class="difficulty-badge">미측정</strong>
+        <div style="margin-top:12px;" class="inline-row">
+          <span id="sectionDifficultyBadge" class="badge easy">분석 전</span>
+          <span id="progressText" class="muted">0 / 0</span>
         </div>
+        <div class="progress-track" style="margin-top:8px;"><div id="progressFill" class="progress-fill"></div></div>
       </section>
 
       <section class="card">
-        <h2>문제</h2>
-
-        <div class="progress-wrap">
-          <div class="progress-head">
-            <span id="progressText">0 / 0</span>
-          </div>
-          <div class="progress-bar">
-            <div id="progressFill" class="progress-fill"></div>
-          </div>
-        </div>
-
         <div id="studyCard" class="study-card">
-          <p class="muted">학습을 시작해 주세요.</p>
-        </div>
-
-        <form id="answerForm" class="form-block">
-          <label class="input-group">
-            <span>정답 입력</span>
-            <input type="text" id="answerInput" placeholder="정답을 입력하세요" />
-          </label>
-
-          <div class="button-row">
-            <button class="button primary" type="submit">제출</button>
-            <button id="showAnswerBtn" class="button" type="button">정답 보기</button>
-            <button id="nextQuestionBtn" class="button" type="button">다음 문제</button>
-          </div>
-        </form>
-
-        <div id="resultBox" class="result-box"></div>
-
-        <div id="judgeConfirmBox" class="judge-confirm-box hidden">
-          <div id="judgeHintText" class="judge-hint-text"></div>
-          <div class="button-row">
-            <button id="confirmCorrectBtn" class="button primary" type="button">정답으로 확정</button>
-            <button id="confirmWrongBtn" class="button inline-danger" type="button">오답으로 확정</button>
-          </div>
+          <div class="muted">준비</div>
+          <div id="studyPrompt" class="study-word">학습을 시작해 주세요.</div>
+          <div id="studyMeta" class="muted"></div>
+          <form id="answerForm" class="form-block">
+            <input id="answerInput" type="text" placeholder="정답을 입력하세요" autocomplete="off" />
+            <div class="button-row">
+              <button class="button primary" type="submit">제출</button>
+              <button id="showAnswerBtn" class="button" type="button">정답 보기</button>
+              <button id="nextQuestionBtn" class="button" type="button">다음 문제</button>
+            </div>
+          </form>
+          <div id="resultBox" class="result-box"></div>
         </div>
       </section>
 
       <section class="card">
-        <h2>학습 로그</h2>
-        <div id="studyLog" class="log-box"></div>
-
-        <h2 class="section-gap">최근 학습</h2>
-        <div id="recentStudyBox" class="log-box"></div>
-
-        <h2 class="section-gap">오답노트</h2>
+        <h2>오답 노트</h2>
         <div id="wrongNoteBox" class="log-box"></div>
+      </section>
+
+      <section class="card">
+        <h2>최근 학습 기록</h2>
+        <div id="recentStudyBox" class="log-box"></div>
       </section>
     </main>
   </div>
-
-  <script type="module" src="./study.js"></script>
+  <script type="module" src="./src/pages/study.js"></script>
 </body>
 </html>

@@ -8,100 +8,74 @@
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <h1>📚 VOCA Quest</h1>
-      <p class="subtitle">단어 태그 아카이브 + 학습 플레이</p>
-    </header>
+    <div id="loading-message" class="auth-wrap card">세션을 확인하는 중입니다…</div>
 
-    <p id="loading-message" style="text-align:center; display:none;">
-     불러오는 중...
-    </p>
-
-    <!-- 로그인 화면 -->
-    <div id="auth-screen" class="card auth-card">
-     <h2>로그인</h2>
-     <input id="email" type="email" placeholder="이메일" />
-     <input id="password" type="password" placeholder="비밀번호" />
-     <div class="button-row auth-actions">
-      <button id="signup-btn">회원가입</button>
-      <button id="login-btn">로그인</button>
-     </div>
-
-     <p class="auth-policy-text">
-      회원가입 시
-      <a href="./terms.html">이용약관</a> 및
-      <a href="./privacy.html">개인정보처리방침</a>에 동의한 것으로 봅니다.
-     </p>
-
-     <p id="auth-message"></p>
-     </div>
-    
-    <!-- 앱 본체 -->
-    <div id="app-screen" style="display: none;">
-      <main class="home-grid">
-        <section class="card">
-          <h2>시작하기</h2>
-          <p>공부하기 싫어서 만든 선택형 스토리 분기 게임 겸 단어 테스트 사이트</p>
+    <section id="auth-screen" class="auth-wrap hidden">
+      <div class="card hero-card">
+        <div>
+          <h1>📚 VOCA Quest</h1>
+          <p class="subtitle">단어 아카이브 + 일반 학습 + TRPG를 한 흐름으로 묶은 단어 퀘스트 앱</p>
+        </div>
+        <div class="form-block">
+          <label class="input-group">
+            <span>이메일</span>
+            <input id="email" type="email" placeholder="이메일을 입력하세요" />
+          </label>
+          <label class="input-group">
+            <span>비밀번호</span>
+            <input id="password" type="password" placeholder="비밀번호를 입력하세요" />
+          </label>
           <div class="button-row">
-            <a class="button" href="./trpg.html">스토리 게임 시작</a>
-            <a class="button primary" href="./archive.html">아카이브 관리</a>
-            <a class="button" href="./study.html">학습 시작</a>
+            <button id="login-btn" class="button primary" type="button">로그인</button>
+            <button id="signup-btn" class="button" type="button">회원가입</button>
           </div>
-        </section>
-
-        <section class="card">
-          <h2>현재 통계</h2>
-          <div id="statsBox" class="stats-box">
-            <div class="stat-item">
-              <span class="stat-label">책 수</span>
-              <strong id="bookCount">0</strong>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">섹션 수</span>
-              <strong id="sectionCount">0</strong>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">단어 수</span>
-              <strong id="wordCount">0</strong>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">최근 학습</span>
-              <strong id="recordCount">0</strong>
-            </div>
+          <div id="auth-message" class="muted small-note"></div>
+          <div class="footer-links">
+            <a href="./terms.html">이용약관</a>
+            <a href="./privacy.html">개인정보처리방침</a>
           </div>
-        </section>
+        </div>
+      </div>
+    </section>
 
-        <section class="card account-card">
-         <div class="account-header">
-          <h2>계정</h2>
-          <span class="account-badge">보호됨</span>
-         </div>
+    <main id="app-screen" class="hidden">
+      <header class="topbar">
+        <div>
+          <h1>📚 VOCA Quest</h1>
+          <p class="subtitle">데이터는 로컬과 Supabase에 함께 저장됩니다.</p>
+        </div>
+        <div class="button-row">
+          <span id="user-info" class="muted small-note"></span>
+          <button id="logout-btn" class="button ghost" type="button">로그아웃</button>
+        </div>
+      </header>
 
-         <p id="user-info" class="user-info-text"></p>
+      <section class="card">
+        <div class="stats-box">
+          <div class="stat-item"><span class="stat-label">책</span><strong id="bookCount">0</strong></div>
+          <div class="stat-item"><span class="stat-label">섹션</span><strong id="sectionCount">0</strong></div>
+          <div class="stat-item"><span class="stat-label">단어</span><strong id="wordCount">0</strong></div>
+          <div class="stat-item"><span class="stat-label">최근 학습</span><strong id="recordCount">0</strong></div>
+        </div>
+      </section>
 
-         <div class="account-actions">
-          <button id="logout-btn" class="logout-button">로그아웃</button>
-         </div>
-        </section>
-
-        <section class="card">
-          <h2>사용 안내</h2>
-          <ol class="guide-list">
-            <li>아카이브에서 책과 섹션을 만든다.</li>
-            <li>단어를 입력하고 품사/정서값/태그를 설정한다.</li>
-            <li>학습 페이지에서 책/섹션을 골라 복습한다.</li>
-          </ol>
-        </section>
-      </main>
-    </div>
+      <section class="grid-3" style="margin-top:16px;">
+        <a class="card" href="./archive.html">
+          <h2>아카이브</h2>
+          <p class="muted">책/섹션/단어를 정리하고 수정합니다.</p>
+        </a>
+        <a class="card" href="./study.html">
+          <h2>일반 학습</h2>
+          <p class="muted">방향 전환, 오답 복습, 즐겨찾기 복습이 가능합니다.</p>
+        </a>
+        <a class="card" href="./trpg.html">
+          <h2>TRPG</h2>
+          <p class="muted">시나리오 진행과 단어 학습을 연결합니다.</p>
+        </a>
+      </section>
+    </main>
   </div>
 
-  <footer class="site-footer">
-    <a href="./terms.html">이용약관</a>
-    <span class="footer-divider">|</span>
-    <a href="./privacy.html">개인정보처리방침</a>
-  </footer>
-
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./src/pages/home.js"></script>
 </body>
 </html>
