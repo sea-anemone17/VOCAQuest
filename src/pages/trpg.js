@@ -3,6 +3,7 @@ import { getCurrentUser } from '../core/supabase.js';
 import { escapeHtml } from '../core/utils.js';
 import { getPosLabel, getToneLabel } from '../core/tags.js';
 import { scenarios } from '../../scenarios/index.js';
+import { pickEventText } from '../core/events.js'; // ← 추가
 
 const authGuard = document.getElementById('trpg-auth-guard');
 const app = document.getElementById('trpg-app');
@@ -17,6 +18,7 @@ const sceneBox = document.getElementById('sceneBox');
 const wordEventBox = document.getElementById('wordEventBox');
 const wordText = document.getElementById('trpgWordText');
 const wordMeta = document.getElementById('trpgWordMeta');
+const eventText = document.getElementById('trpgEventText'); // ← 추가 (HTML에도 추가 필요, 아래 설명 참고)
 const answerForm = document.getElementById('trpgAnswerForm');
 const answerInput = document.getElementById('trpgAnswerInput');
 const showAnswerBtn = document.getElementById('trpgShowAnswerBtn');
@@ -36,7 +38,8 @@ const state = {
   mistakes: 0,
   currentWordId: null,
   ended: false,
-  journal: []
+  journal: [],
+  recentWordIds: [] // ← 추가: 최근 나온 단어 추적용
 };
 
 function currentScenario() {
@@ -59,10 +62,23 @@ function sectionWords() {
   return getData().words.filter((word) => word.sectionId === sectionSelect.value);
 }
 
+// ── 수정된 pickWord: 최근 나온 단어를 제외하고 골고루 뽑음 ──
 function pickWord() {
   const words = sectionWords();
   if (!words.length) return null;
-  return words[Math.floor(Math.random() * words.length)];
+
+  const recentIds = new Set(state.recentWordIds);
+  const fresh = words.filter((w) => !recentIds.has(w.id));
+
+  // 안 나온 단어가 있으면 그쪽에서, 없으면 전체에서 뽑기
+  const pool = fresh.length ? fresh : words;
+  const word = pool[Math.floor(Math.random() * pool.length)];
+
+  // 최근 목록 업데이트 (최대 단어 총 수의 절반까지 기억, 최소 3개)
+  const maxRecent = Math.max(3, Math.floor(words.length / 2));
+  state.recentWordIds = [...state.recentWordIds, word.id].slice(-maxRecent);
+
+  return word;
 }
 
 function renderJournal() {
@@ -90,6 +106,7 @@ function renderStats() {
   scenarioStatus.textContent = state.ended ? '종결' : '진행 중';
 }
 
+// ── 수정된 startWordEvent: 이벤트 텍스트를 태그+품사 기반으로 생성 ──
 function startWordEvent() {
   const word = pickWord();
   if (!word) {
@@ -99,6 +116,12 @@ function startWordEvent() {
   state.currentWordId = word.id;
   wordText.textContent = word.word;
   wordMeta.textContent = `${getPosLabel(word.pos)} · ${getToneLabel(word.tone)}`;
+
+  // 이벤트 텍스트 생성 후 {word} 치환
+  const raw = pickEventText(word.pos, word.tags);
+  const filled = raw.replace(/\{word\}/g, word.word);
+  if (eventText) eventText.textContent = filled;
+
   resultBox.className = 'result-box';
   resultBox.textContent = '';
   answerInput.value = '';
@@ -168,6 +191,7 @@ function startScenario() {
   state.currentWordId = null;
   state.ended = false;
   state.journal = [];
+  state.recentWordIds = []; // ← 추가: 시나리오 시작 시 초기화
   endingBox.classList.add('hidden');
   renderStats();
   renderScene();
